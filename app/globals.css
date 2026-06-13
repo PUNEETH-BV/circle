@@ -1,0 +1,112 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 47.4% 11.2%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 47.4% 11.2%;
+    --primary: 239 84% 67%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --ring: 239 84% 67%;
+    --radius: 0.75rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+}
+
+/* Tiptap Editor Styles */
+.tiptap {
+  @apply outline-none min-h-[500px] px-1;
+}
+
+.tiptap p {
+  @apply mb-3;
+}
+
+.tiptap h1 {
+  @apply text-3xl font-semibold mb-4 mt-6;
+}
+
+.tiptap h2 {
+  @apply text-2xl font-semibold mb-3 mt-5;
+}
+
+.tiptap h3 {
+  @apply text-xl font-semibold mb-2 mt-4;
+}
+
+.tiptap ul {
+  @apply list-disc list-inside mb-3;
+}
+
+.tiptap ol {
+  @apply list-decimal list-inside mb-3;
+}
+
+.tiptap blockquote {
+  @apply border-l-4 border-indigo-300 pl-4 italic text-slate-600 my-4;
+}
+
+.tiptap pre {
+  @apply bg-slate-900 text-slate-100 rounded-lg p-4 my-4 overflow-x-auto;
+}
+
+.tiptap code {
+  @apply bg-slate-100 text-indigo-600 rounded px-1 py-0.5 text-sm;
+}
+
+.tiptap pre code {
+  @apply bg-transparent text-inherit p-0;
+}
+
+.tiptap hr {
+  @apply border-slate-200 my-6;
+}
+
+.tiptap a {
+  @apply text-indigo-600 underline;
+}
+
+.tiptap p.is-editor-empty:first-child::before {
+  @apply text-slate-400;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* Skeleton animation */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}

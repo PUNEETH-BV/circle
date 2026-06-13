@@ -1,0 +1,45 @@
+'use client';
+
+import { useState } from 'react';
+import { Sidebar } from './Sidebar';
+import { Topbar } from './Topbar';
+import { MobileDrawer } from './MobileDrawer';
+import type { Circle, Profile } from '@/types';
+
+interface AppShellProps {
+  profile: Profile | null;
+  circles: Circle[];
+  children: React.ReactNode;
+}
+
+export function AppShell({ profile, circles, children }: AppShellProps) {
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  return (
+    <div className="min-h-screen bg-surface">
+      {/* Desktop sidebar */}
+      <aside className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:flex lg:w-[260px] lg:flex-col">
+        <Sidebar circles={circles} profile={profile} />
+      </aside>
+
+      {/* Mobile drawer */}
+      <MobileDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        circles={circles}
+        profile={profile}
+      />
+
+      {/* Main content */}
+      <div className="lg:pl-[260px]">
+        <Topbar
+          profile={profile}
+          onMenuClick={() => setDrawerOpen(true)}
+        />
+        <main className="p-4 md:p-6 lg:p-8">
+          {children}
+        </main>
+      </div>
+    </div>
+  );
+}
