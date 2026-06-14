@@ -4,16 +4,16 @@ import type { NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname
-  console.log(`[Middleware] Request: ${path}`)
+
+  // Always pass through OAuth routes without interference
+  if (
+    path.startsWith('/auth/callback') ||
+    path.startsWith('/auth/google')
+  ) {
+    return NextResponse.next({ request })
+  }
 
   let supabaseResponse = NextResponse.next({ request })
-
-  if (
-    request.nextUrl.pathname.startsWith('/auth/callback') ||
-    request.nextUrl.pathname.startsWith('/auth/google')
-  ) {
-    return supabaseResponse
-  }
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -24,7 +24,6 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet: { name: string; value: string; options?: any }[]) {
-          console.log(`[Middleware] setAll cookies:`, cookiesToSet.map(c => c.name))
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           )
@@ -37,42 +36,30 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  const { data: { user }, error } = await supabase.auth.getUser()
-  if (error) {
-    console.error(`[Middleware] getUser error:`, error.message)
-  }
-  console.log(`[Middleware] User:`, user ? user.email : 'null')
+  // IMPORTANT: Do not run code between createServerClient and supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
 
   const isAuthRoute = path.startsWith('/auth')
 
-  // If not logged in and not on an auth page, send to login
+  // Not logged in and trying to access a protected route
   if (!user && !isAuthRoute) {
-    console.log(`[Middleware] Redirecting to /auth/login (Not logged in)`)
-    const response = NextResponse.redirect(new URL('/auth/login', request.url))
-    supabaseResponse.cookies.getAll().forEach((cookie) => {
-      console.log(`  Copying cookie to redirect: ${cookie.name}`)
-      response.cookies.set(cookie.name, cookie.value, cookie)
-    })
-    return response
+    const url = request.nextUrl.clone()
+    url.pathname = '/auth/login'
+    return NextResponse.redirect(url)
   }
 
-  // If logged in and on auth page, send to dashboard
+  // Logged in and on an auth page — redirect to home
   if (user && isAuthRoute) {
-    console.log(`[Middleware] Redirecting to / (Logged in on auth page)`)
-    const response = NextResponse.redirect(new URL('/', request.url))
-    supabaseResponse.cookies.getAll().forEach((cookie) => {
-      console.log(`  Copying cookie to redirect: ${cookie.name}`)
-      response.cookies.set(cookie.name, cookie.value, cookie)
-    })
-    return response
+    const url = request.nextUrl.clone()
+    url.pathname = '/'
+    return NextResponse.redirect(url)
   }
 
-  console.log(`[Middleware] Allowing access.`)
   return supabaseResponse
 }
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|api/).*)',
+    '/((?!_next/static|_next/image|favicon.ico|.*\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }

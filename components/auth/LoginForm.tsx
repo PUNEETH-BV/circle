@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { z } from 'zod';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -18,7 +17,6 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export function LoginForm() {
-  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Partial<Record<keyof LoginFormValues, string>>>({});
   const [formData, setFormData] = useState<LoginFormValues>({
@@ -69,8 +67,9 @@ export function LoginForm() {
         return;
       }
 
-      router.push('/');
-      router.refresh();
+      // Full page navigation so the browser sends the session cookie
+      // to the middleware on the next request (router.push may miss it)
+      window.location.href = '/';
     } catch {
       toast.error('Something went wrong. Please try again.');
     } finally {
