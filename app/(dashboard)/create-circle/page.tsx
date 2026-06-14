@@ -93,7 +93,7 @@ export default function CreateCirclePage() {
             {copied ? <Check className="w-4 h-4 mr-2" /> : <Copy className="w-4 h-4 mr-2" />}
             {copied ? 'Copied!' : 'Copy Invite Link'}
           </Button>
-          <Button onClick={() => { router.push(`/circle/${createdCircleId}`); router.refresh(); }} className="w-full">
+          <Button onClick={() => { window.location.href = `/circle/${createdCircleId}`; }} className="w-full">
             Go to Circle
           </Button>
         </div>

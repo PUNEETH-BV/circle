@@ -1,5 +1,6 @@
 -- ==========================================
 -- Circle App — Full Database Schema
+-- Run this entire file in Supabase SQL Editor
 -- ==========================================
 
 -- Enable UUID generation
@@ -10,7 +11,7 @@ create extension if not exists "uuid-ossp";
 -- ==========================================
 create table if not exists public.profiles (
   id uuid references auth.users on delete cascade primary key,
-  full_name text not null,
+  full_name text,                          -- nullable: Google OAuth may not provide name
   avatar_url text,
   created_at timestamptz default now() not null
 );
@@ -20,10 +21,13 @@ alter table public.profiles enable row level security;
 create policy "Public profiles are viewable by everyone" on public.profiles
   for select using (true);
 
+create policy "Users can insert their own profile" on public.profiles
+  for insert with check (auth.uid() = id);
+
 create policy "Users can update their own profile" on public.profiles
   for update using (auth.uid() = id);
 
--- Auto-create profile on signup
+-- Auto-create profile on signup (handles both email and OAuth)
 create or replace function public.handle_new_user()
 returns trigger as $$
 begin
@@ -40,7 +44,16 @@ begin
       new.raw_user_meta_data->>'picture'
     )
   )
-  on conflict (id) do nothing;
+  on conflict (id) do update
+    set
+      full_name = coalesce(
+        excluded.full_name,
+        public.profiles.full_name
+      ),
+      avatar_url = coalesce(
+        excluded.avatar_url,
+        public.profiles.avatar_url
+      );
   return new;
 end;
 $$ language plpgsql security definer;
@@ -357,36 +370,37 @@ create policy "Admins can delete announcements" on public.announcements
   );
 
 -- ==========================================
--- STORAGE POLICIES
--- ==========================================
--- Run these separately if the bucket already exists
--- First, create the bucket in the Supabase dashboard named 'circle-files'
-
-create policy "Members can upload files to circle storage"
-  on storage.objects for insert
-  with check (
-    bucket_id = 'circle-files'
-    and auth.uid() is not null
-  );
-
-create policy "Members can view files in circle storage"
-  on storage.objects for select
-  using (
-    bucket_id = 'circle-files'
-    and auth.uid() is not null
-  );
-
-create policy "Owners can delete their files from storage"
-  on storage.objects for delete
-  using (
-    bucket_id = 'circle-files'
-    and auth.uid() is not null
-  );
-
--- ==========================================
 -- REALTIME — Enable realtime for key tables
 -- ==========================================
 alter publication supabase_realtime add table public.files;
 alter publication supabase_realtime add table public.notes;
 alter publication supabase_realtime add table public.announcements;
 alter publication supabase_realtime add table public.circle_members;
+
+-- ==========================================
+-- STORAGE POLICIES
+-- Create the bucket named 'circle-files' in the Supabase
+-- dashboard first (Storage tab), then run these policies.
+-- ==========================================
+-- Uncomment after creating the bucket:
+--
+-- create policy "Members can upload files to circle storage"
+--   on storage.objects for insert
+--   with check (
+--     bucket_id = 'circle-files'
+--     and auth.uid() is not null
+--   );
+--
+-- create policy "Members can view files in circle storage"
+--   on storage.objects for select
+--   using (
+--     bucket_id = 'circle-files'
+--     and auth.uid() is not null
+--   );
+--
+-- create policy "Owners can delete their files from storage"
+--   on storage.objects for delete
+--   using (
+--     bucket_id = 'circle-files'
+--     and auth.uid() is not null
+--   );
