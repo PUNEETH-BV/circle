@@ -15,6 +15,7 @@ export interface Circle {
   created_at: string;
   member_count?: number;
   file_count?: number;
+  is_private: boolean;
 }
 
 export interface CircleMember {
@@ -38,6 +39,7 @@ export interface FileRecord {
   id: string;
   circle_id: string;
   category_id?: string | null;
+  folder_id?: string | null;
   uploaded_by: string;
   name: string;
   description?: string;
@@ -73,4 +75,31 @@ export interface Announcement {
   body: string;
   created_at: string;
   author?: Profile;
+}
+
+export interface Folder {
+  id: string;
+  circle_id: string;
+  category_id?: string | null;
+  created_by: string;
+  name: string;
+  description?: string;
+  pinned: boolean;
+  file_count: number;
+  created_at: string;
+  updated_at: string;
+  creator?: Profile;
+  files?: FileRecord[];
+}
+
+export interface JoinRequest {
+  id: string;
+  circle_id: string;
+  user_id: string;
+  status: 'pending' | 'approved' | 'rejected';
+  message?: string;
+  requested_at: string;
+  reviewed_at?: string;
+  reviewed_by?: string;
+  profile?: Profile;
 }

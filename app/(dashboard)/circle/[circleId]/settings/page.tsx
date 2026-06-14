@@ -28,6 +28,8 @@ export default function SettingsPage() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [updatingInfo, setUpdatingInfo] = useState(false);
+  const [isPrivate, setIsPrivate] = useState(false);
+  const [savingPrivacy, setSavingPrivacy] = useState(false);
 
   // Avatar states
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -50,6 +52,7 @@ export default function SettingsPage() {
     if (circle) {
       setName(circle.name);
       setDescription(circle.description || '');
+      setIsPrivate(circle.is_private || false);
     }
   }, [circle]);
 
@@ -271,6 +274,29 @@ export default function SettingsPage() {
       setCategories(list);
     } catch (err: any) {
       toast.error('Failed to reorder: ' + err.message);
+    }
+  };
+
+  const handleSavePrivacy = async () => {
+    setSavingPrivacy(true);
+    try {
+      const { error } = await supabase
+        .from('circles')
+        .update({ is_private: isPrivate })
+        .eq('id', circleId);
+
+      if (error) throw error;
+      if (isPrivate) {
+        toast.info('Circle is now private — new members must request to join');
+      } else {
+        toast.info('Circle is now public — anyone with the invite code can join instantly');
+      }
+      refreshCircle();
+      router.refresh();
+    } catch (err: any) {
+      toast.error('Failed to update privacy setting: ' + err.message);
+    } finally {
+      setSavingPrivacy(false);
     }
   };
 
@@ -524,6 +550,66 @@ export default function SettingsPage() {
             })}
           </div>
         )}
+      </div>
+
+      {/* Circle Privacy Setting */}
+      <div className="bg-white rounded-xl border border-slate-100 p-6 shadow-sm space-y-4">
+        <div>
+          <h3 className="text-base font-semibold text-slate-900">Circle Privacy</h3>
+          <p className="text-xs text-slate-500 mt-1">
+            Choose how members join this circle workspace.
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          <label className={cn(
+            "flex items-start gap-3 p-4 border rounded-xl cursor-pointer transition-all",
+            !isPrivate
+              ? "border-indigo-600 bg-indigo-50/20"
+              : "border-slate-200 hover:border-slate-300"
+          )}>
+            <input
+              type="radio"
+              name="privacy"
+              checked={!isPrivate}
+              onChange={() => setIsPrivate(false)}
+              className="mt-1 text-indigo-600 focus:ring-indigo-500"
+            />
+            <div className="text-xs">
+              <span className="font-bold text-slate-800 block">Public Circle</span>
+              <span className="text-slate-500 mt-0.5 block">Anyone with the invite code joins instantly. No approvals required.</span>
+            </div>
+          </label>
+
+          <label className={cn(
+            "flex items-start gap-3 p-4 border rounded-xl cursor-pointer transition-all",
+            isPrivate
+              ? "border-indigo-600 bg-indigo-50/20"
+              : "border-slate-200 hover:border-slate-300"
+          )}>
+            <input
+              type="radio"
+              name="privacy"
+              checked={isPrivate}
+              onChange={() => setIsPrivate(true)}
+              className="mt-1 text-indigo-600 focus:ring-indigo-500"
+            />
+            <div className="text-xs">
+              <span className="font-bold text-slate-800 block">Private Circle</span>
+              <span className="text-slate-500 mt-0.5 block">People must request to join using the invite code. You approve or reject each request.</span>
+            </div>
+          </label>
+        </div>
+
+        <div className="flex justify-end pt-2">
+          <Button
+            type="button"
+            onClick={handleSavePrivacy}
+            disabled={savingPrivacy}
+          >
+            {savingPrivacy ? 'Saving Privacy...' : 'Save Privacy Setting'}
+          </Button>
+        </div>
       </div>
 
       {/* Danger Zone */}

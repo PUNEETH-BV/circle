@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient();
-    const { inviteCode } = await request.json();
+    const { inviteCode, message } = await request.json();
 
     if (!inviteCode) {
       return NextResponse.json({ error: 'Invite code is required' }, { status: 400 });
@@ -16,7 +16,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Use the security definer RPC function to look up circles by invite code
-    // This bypasses RLS so non-members can find circles to join
     const { data: circles, error: rpcError } = await supabase
       .rpc('lookup_circle_by_invite_code', { code: inviteCode });
 
@@ -26,19 +25,7 @@ export async function POST(request: NextRequest) {
 
     const circle = circles[0];
 
-    // Check if already a member using user's own view (RLS allows viewing own membership)
-    const { data: existing } = await supabase
-      .from('circle_members')
-      .select('id')
-      .eq('circle_id', circle.id)
-      .eq('user_id', user.id)
-      .single();
-
-    if (existing) {
-      return NextResponse.json({ error: "You're already in this circle" }, { status: 409 });
-    }
-
-    // Ensure the user has a profile row (may be missing if signup trigger didn't fire)
+    // Ensure the user has a profile row (upsert)
     const { error: profileError } = await supabase
       .from('profiles')
       .upsert({
@@ -51,21 +38,68 @@ export async function POST(request: NextRequest) {
       console.error('Profile upsert error:', profileError);
     }
 
-    // Join the circle
-    const { error: joinError } = await supabase
+    // Check if already a member
+    const { data: existingMember } = await supabase
       .from('circle_members')
-      .insert({
-        circle_id: circle.id,
-        user_id: user.id,
-        role: 'member',
-      });
+      .select('id')
+      .eq('circle_id', circle.id)
+      .eq('user_id', user.id)
+      .single();
 
-    if (joinError) {
-      console.error('Join error:', joinError);
-      return NextResponse.json({ error: joinError.message || 'Failed to join circle' }, { status: 500 });
+    if (existingMember) {
+      return NextResponse.json({ error: "You're already in this circle", status: 'joined', circleId: circle.id }, { status: 409 });
     }
 
-    return NextResponse.json({ circleId: circle.id, circleName: circle.name });
+    if (circle.is_private) {
+      // Check for existing join request
+      const { data: existingRequest } = await supabase
+        .from('join_requests')
+        .select('*')
+        .eq('circle_id', circle.id)
+        .eq('user_id', user.id)
+        .single();
+
+      if (existingRequest) {
+        if (existingRequest.status === 'pending') {
+          return NextResponse.json({ error: 'You already have a pending request for this circle', status: 'requested' }, { status: 409 });
+        }
+        if (existingRequest.status === 'approved') {
+          // Double check: if approved request exists but membership was deleted, we let them request again.
+          // Otherwise, they are already a member and would have hit the check above.
+        }
+      }
+
+      // Create join request
+      const { error: requestError } = await supabase
+        .from('join_requests')
+        .upsert({
+          circle_id: circle.id,
+          user_id: user.id,
+          status: 'pending',
+          message: message?.trim() || null,
+          requested_at: new Date().toISOString()
+        }, { onConflict: 'circle_id,user_id' });
+
+      if (requestError) throw requestError;
+
+      return NextResponse.json({ status: 'requested', circleName: circle.name });
+    } else {
+      // Public — join immediately
+      const { error: joinError } = await supabase
+        .from('circle_members')
+        .insert({
+          circle_id: circle.id,
+          user_id: user.id,
+          role: 'member',
+        });
+
+      if (joinError) {
+        console.error('Join error:', joinError);
+        return NextResponse.json({ error: joinError.message || 'Failed to join circle' }, { status: 500 });
+      }
+
+      return NextResponse.json({ status: 'joined', circleId: circle.id, circleName: circle.name });
+    }
   } catch (error: any) {
     console.error('Join route error:', error);
     return NextResponse.json({ error: error.message || 'Something went wrong' }, { status: 500 });

@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import type { FileRecord, Category } from '@/types';
 import { toast } from 'sonner';
 
-export function useFiles(circleId: string) {
+export function useFiles(circleId: string, folderId?: string) {
   const supabase = createClient();
   const [files, setFiles] = useState<FileRecord[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -34,15 +34,20 @@ export function useFiles(circleId: string) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [circleId]);
+  }, [circleId, folderId]);
 
   async function fetchFiles() {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('files')
         .select('*, uploader:profiles(*), category:categories(*)')
-        .eq('circle_id', circleId)
-        .order('created_at', { ascending: false });
+        .eq('circle_id', circleId);
+
+      if (folderId) {
+        query = query.eq('folder_id', folderId);
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false });
 
       if (error) throw error;
       setFiles(data || []);

@@ -120,10 +120,10 @@ $$ language plpgsql security definer;
 
 -- Allows any authenticated user to look up a circle by invite code (for joining)
 create or replace function public.lookup_circle_by_invite_code(code text)
-returns table (id uuid, name text) as $$
+returns table (id uuid, name text, is_private boolean) as $$
 begin
   return query
-  select c.id, c.name from public.circles c
+  select c.id, c.name, c.is_private from public.circles c
   where c.invite_code = code
   limit 1;
 end;
@@ -333,3 +333,113 @@ select
   )
 from auth.users
 on conflict (id) do nothing;
+
+-- ==========================================
+-- STEP 7: FOLDERS & JOIN REQUESTS FEATURE
+-- ==========================================
+
+-- Add is_private column to circles table if it doesn't exist
+ALTER TABLE public.circles ADD COLUMN IF NOT EXISTS is_private BOOLEAN DEFAULT FALSE;
+
+-- FOLDERS TABLE
+CREATE TABLE IF NOT EXISTS public.folders (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  circle_id UUID REFERENCES public.circles(id) ON DELETE CASCADE,
+  category_id UUID REFERENCES public.categories(id) ON DELETE SET NULL,
+  created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  name TEXT NOT NULL,
+  description TEXT,
+  pinned BOOLEAN DEFAULT FALSE,
+  file_count INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Add folder_id to existing files table if it doesn't exist
+ALTER TABLE public.files ADD COLUMN IF NOT EXISTS folder_id UUID REFERENCES public.folders(id) ON DELETE CASCADE;
+
+-- JOIN REQUESTS TABLE
+CREATE TABLE IF NOT EXISTS public.join_requests (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  circle_id UUID REFERENCES public.circles(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+  message TEXT,
+  requested_at TIMESTAMPTZ DEFAULT NOW(),
+  reviewed_at TIMESTAMPTZ,
+  reviewed_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  UNIQUE(circle_id, user_id)
+);
+
+-- RLS for folders
+ALTER TABLE public.folders ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Members can view folders" ON public.folders;
+CREATE POLICY "Members can view folders" ON public.folders FOR SELECT
+  USING (circle_id IN (
+    SELECT public.get_my_circle_ids()
+  ));
+
+DROP POLICY IF EXISTS "Members can create folders" ON public.folders;
+CREATE POLICY "Members can create folders" ON public.folders FOR INSERT
+  WITH CHECK (circle_id IN (
+    SELECT public.get_my_circle_ids()
+  ));
+
+DROP POLICY IF EXISTS "Creator or admin can update folder" ON public.folders;
+CREATE POLICY "Creator or admin can update folder" ON public.folders FOR UPDATE
+  USING (
+    created_by = auth.uid() OR
+    public.is_circle_admin(circle_id)
+  );
+
+DROP POLICY IF EXISTS "Creator or admin can delete folder" ON public.folders;
+CREATE POLICY "Creator or admin can delete folder" ON public.folders FOR DELETE
+  USING (
+    created_by = auth.uid() OR
+    public.is_circle_admin(circle_id)
+  );
+
+-- RLS for join_requests
+ALTER TABLE public.join_requests ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "User can see own requests" ON public.join_requests;
+CREATE POLICY "User can see own requests" ON public.join_requests FOR SELECT
+  USING (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "Admins can see circle requests" ON public.join_requests;
+CREATE POLICY "Admins can see circle requests" ON public.join_requests FOR SELECT
+  USING (public.is_circle_admin(circle_id));
+
+DROP POLICY IF EXISTS "Users can create join requests" ON public.join_requests;
+CREATE POLICY "Users can create join requests" ON public.join_requests FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Admins can update join requests" ON public.join_requests;
+CREATE POLICY "Admins can update join requests" ON public.join_requests FOR UPDATE
+  USING (public.is_circle_admin(circle_id));
+
+-- Function to auto update folder file_count
+CREATE OR REPLACE FUNCTION public.update_folder_file_count()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF TG_OP = 'INSERT' AND NEW.folder_id IS NOT NULL THEN
+    UPDATE public.folders SET file_count = file_count + 1,
+    updated_at = NOW() WHERE id = NEW.folder_id;
+  ELSIF TG_OP = 'DELETE' AND OLD.folder_id IS NOT NULL THEN
+    UPDATE public.folders SET file_count = GREATEST(file_count - 1, 0),
+    updated_at = NOW() WHERE id = OLD.folder_id;
+  END IF;
+  RETURN COALESCE(NEW, OLD);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_file_change_update_folder_count ON public.files;
+CREATE TRIGGER on_file_change_update_folder_count
+  AFTER INSERT OR DELETE ON public.files
+  FOR EACH ROW EXECUTE FUNCTION public.update_folder_file_count();
+
+-- Realtime replication setup for folders and join_requests
+alter publication supabase_realtime add table public.folders;
+alter publication supabase_realtime add table public.join_requests;
+

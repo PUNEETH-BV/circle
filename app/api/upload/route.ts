@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient();
-    const { circleId, fileName, fileType } = await request.json();
+    const { circleId, folderId, fileName, fileType } = await request.json();
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -25,7 +25,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Not a member of this circle' }, { status: 403 });
     }
 
-    const filePath = `${circleId}/${user.id}/${Date.now()}-${fileName}`;
+    let filePath = `${circleId}/${user.id}/${Date.now()}-${fileName}`;
+    if (folderId) {
+      filePath = `${circleId}/folders/${folderId}/${user.id}/${Date.now()}-${fileName}`;
+    }
 
     const { data, error } = await supabase.storage
       .from('circle-files')
