@@ -6,7 +6,7 @@ import type { NextRequest } from 'next/server'
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
-  const origin = requestUrl.origin
+  const next = requestUrl.searchParams.get('next') ?? '/'
 
   if (code) {
     const cookieStore = cookies()
@@ -15,7 +15,9 @@ export async function GET(request: NextRequest) {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
         cookies: {
-          getAll() { return cookieStore.getAll() },
+          getAll() {
+            return cookieStore.getAll()
+          },
           setAll(cookiesToSet: { name: string; value: string; options: any }[]) {
             cookiesToSet.forEach(({ name, value, options }) =>
               cookieStore.set(name, value, options)
@@ -24,9 +26,14 @@ export async function GET(request: NextRequest) {
         },
       }
     )
-    await supabase.auth.exchangeCodeForSession(code)
+    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    if (!error) {
+      return NextResponse.redirect(new URL(next, requestUrl.origin))
+    }
   }
 
-  // After Google login, redirect to dashboard home
-  return NextResponse.redirect(`${origin}/`)
+  // If something went wrong, send to login with error
+  return NextResponse.redirect(
+    new URL('/auth/login?error=oauth_error', requestUrl.origin)
+  )
 }
