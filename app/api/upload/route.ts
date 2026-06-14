@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
@@ -11,8 +12,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
-    // Verify membership
-    const { data: member } = await supabase
+    // Verify membership using admin client (avoids RLS recursion issues)
+    const adminClient = createAdminClient();
+    const { data: member } = await adminClient
       .from('circle_members')
       .select('id')
       .eq('circle_id', circleId)
@@ -38,6 +40,7 @@ export async function POST(request: NextRequest) {
       filePath 
     });
   } catch (error: any) {
+    console.error('Upload route error:', error);
     return NextResponse.json({ error: 'Failed to generate upload URL' }, { status: 500 });
   }
 }

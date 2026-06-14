@@ -118,6 +118,17 @@ begin
 end;
 $$ language plpgsql security definer;
 
+-- Allows any authenticated user to look up a circle by invite code (for joining)
+create or replace function public.lookup_circle_by_invite_code(code text)
+returns table (id uuid, name text) as $$
+begin
+  return query
+  select c.id, c.name from public.circles c
+  where c.invite_code = code
+  limit 1;
+end;
+$$ language plpgsql security definer;
+
 -- ==========================================
 -- STEP 3: ALL POLICIES (all tables exist now)
 -- ==========================================

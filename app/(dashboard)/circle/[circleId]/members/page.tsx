@@ -62,7 +62,7 @@ export default function MembersPage() {
   };
 
   const filteredMembers = members.filter((member) =>
-    member.profile?.full_name.toLowerCase().includes(searchQuery.toLowerCase())
+    member.profile?.full_name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleRemoveMember = async () => {

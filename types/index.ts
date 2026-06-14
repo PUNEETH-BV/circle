@@ -30,7 +30,7 @@ export interface Category {
   id: string;
   circle_id: string;
   name: string;
-  icon: string;
+  icon?: string;
   position: number;
 }
 

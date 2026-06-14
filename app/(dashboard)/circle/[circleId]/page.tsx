@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState } from 'react';
+import { useState } from 'react';
 import { useCircle } from '@/lib/hooks/useCircle';
 import { Copy, Check, Megaphone, Plus, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -15,8 +15,8 @@ import { getInitials } from '@/lib/utils/getInitials';
 import { formatDate } from '@/lib/utils/formatDate';
 import { toast } from 'sonner';
 
-export default function CircleHomePage({ params }: { params: Promise<{ circleId: string }> }) {
-  const { circleId } = use(params);
+export default function CircleHomePage({ params }: { params: { circleId: string } }) {
+  const { circleId } = params;
   const { circle, announcements, loading, userRole, createAnnouncement } = useCircle(circleId);
   const [copied, setCopied] = useState(false);
   const [showAnnouncementForm, setShowAnnouncementForm] = useState(false);

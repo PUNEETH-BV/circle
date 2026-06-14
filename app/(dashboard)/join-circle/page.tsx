@@ -1,19 +1,17 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { ArrowLeft, UserPlus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { createClient } from '@/lib/supabase/client';
+
 import { toast } from 'sonner';
 import Link from 'next/link';
 
 function JoinCircleContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const supabase = createClient();
   const [code, setCode] = useState(searchParams.get('code') || '');
   const [loading, setLoading] = useState(false);
 
@@ -39,8 +37,7 @@ function JoinCircleContent() {
       }
 
       toast.success(`Welcome to ${data.circleName}!`);
-      router.push(`/circle/${data.circleId}`);
-      router.refresh();
+      window.location.href = `/circle/${data.circleId}`;
     } catch (error: any) {
       toast.error(error.message || 'Something went wrong');
     } finally {

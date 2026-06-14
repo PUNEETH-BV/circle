@@ -291,9 +291,8 @@ export default function SettingsPage() {
 
       if (error) throw error;
 
-      toast.success(`Deleted workspace "${circle.name}"`);
-      router.push('/');
-      router.refresh();
+      toast.success(`Deleted workspace "${circle?.name}"`);
+      window.location.href = '/';
     } catch (err: any) {
       toast.error('Failed to delete circle: ' + err.message);
       setDeletingCircle(false);
