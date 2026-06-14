@@ -4,17 +4,19 @@ import { NextResponse } from 'next/server'
 
 export async function GET() {
   const cookieStore = await cookies()
+  const cookiesToSet: { name: string; value: string; options?: any }[] = []
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() { return cookieStore.getAll() },
-        setAll(cookiesToSet: { name: string; value: string; options: any }[]) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options)
-          )
+        getAll() {
+          return cookieStore.getAll()
+        },
+        setAll(newCookies: { name: string; value: string; options?: any }[]) {
+          // Collect cookies — do NOT set them yet
+          cookiesToSet.push(...newCookies)
         },
       },
     }
@@ -30,10 +32,16 @@ export async function GET() {
 
   if (error || !data.url) {
     return NextResponse.redirect(
-      new URL('/auth/login?error=google_failed', 
-      process.env.NEXT_PUBLIC_APP_URL!)
+      new URL('/auth/login?error=google_failed', process.env.NEXT_PUBLIC_APP_URL!)
     )
   }
 
-  return NextResponse.redirect(data.url)
+  // Create the redirect and ATTACH the PKCE cookies directly onto it
+  // This is critical — without this the verifier is lost during redirect
+  const response = NextResponse.redirect(data.url)
+  cookiesToSet.forEach(({ name, value, options }) => {
+    response.cookies.set(name, value, options)
+  })
+
+  return response
 }
