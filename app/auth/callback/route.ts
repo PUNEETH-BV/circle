@@ -39,9 +39,12 @@ export async function GET(request: NextRequest) {
     }
 
     console.error('OAuth error:', error.message)
+    return NextResponse.redirect(
+      new URL(`/auth/login?error=${encodeURIComponent(error.message)}`, requestUrl.origin)
+    )
   }
 
   return NextResponse.redirect(
-    new URL('/auth/login?error=oauth_error', requestUrl.origin)
+    new URL('/auth/login?error=missing_code', requestUrl.origin)
   )
 }

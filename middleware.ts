@@ -3,6 +3,9 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
+  const path = request.nextUrl.pathname
+  console.log(`[Middleware] Request: ${path}`)
+
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -14,6 +17,7 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet: { name: string; value: string; options?: any }[]) {
+          console.log(`[Middleware] setAll cookies:`, cookiesToSet.map(c => c.name))
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           )
@@ -26,20 +30,26 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { user }, error } = await supabase.auth.getUser()
+  if (error) {
+    console.error(`[Middleware] getUser error:`, error.message)
+  }
+  console.log(`[Middleware] User:`, user ? user.email : 'null')
 
-  const isAuthRoute = request.nextUrl.pathname.startsWith('/auth')
-  const isCallbackRoute = request.nextUrl.pathname.startsWith('/auth/callback')
+  const isAuthRoute = path.startsWith('/auth')
+  const isCallbackRoute = path.startsWith('/auth/callback')
 
-  // Never block the callback route — session is being set here
   if (isCallbackRoute) {
+    console.log(`[Middleware] Allowing callback route.`)
     return supabaseResponse
   }
 
   // If not logged in and not on an auth page, send to login
   if (!user && !isAuthRoute) {
+    console.log(`[Middleware] Redirecting to /auth/login (Not logged in)`)
     const response = NextResponse.redirect(new URL('/auth/login', request.url))
     supabaseResponse.cookies.getAll().forEach((cookie) => {
+      console.log(`  Copying cookie to redirect: ${cookie.name}`)
       response.cookies.set(cookie.name, cookie.value, cookie)
     })
     return response
@@ -47,13 +57,16 @@ export async function middleware(request: NextRequest) {
 
   // If logged in and on auth page, send to dashboard
   if (user && isAuthRoute) {
+    console.log(`[Middleware] Redirecting to / (Logged in on auth page)`)
     const response = NextResponse.redirect(new URL('/', request.url))
     supabaseResponse.cookies.getAll().forEach((cookie) => {
+      console.log(`  Copying cookie to redirect: ${cookie.name}`)
       response.cookies.set(cookie.name, cookie.value, cookie)
     })
     return response
   }
 
+  console.log(`[Middleware] Allowing access.`)
   return supabaseResponse
 }
 
