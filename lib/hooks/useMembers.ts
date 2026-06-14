@@ -1,13 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/client';
 import type { CircleMember } from '@/types';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 
 export function useMembers(circleId: string) {
-  const supabase = getSupabaseBrowserClient();
+  const supabase = createClient();
   const router = useRouter();
   const [members, setMembers] = useState<CircleMember[]>([]);
   const [loading, setLoading] = useState(true);

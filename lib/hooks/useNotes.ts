@@ -1,13 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/client';
 import type { Note, Category } from '@/types';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 
 export function useNotes(circleId: string) {
-  const supabase = getSupabaseBrowserClient();
+  const supabase = createClient();
   const router = useRouter();
   const [notes, setNotes] = useState<Note[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);

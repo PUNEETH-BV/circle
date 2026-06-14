@@ -10,14 +10,14 @@ import { FileUploader } from '@/components/files/FileUploader';
 import { FilePreviewModal } from '@/components/files/FilePreviewModal';
 import { useFiles } from '@/lib/hooks/useFiles';
 import { useCircle } from '@/lib/hooks/useCircle';
-import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 import type { FileRecord } from '@/types';
 
 export default function FilesPage() {
   const params = useParams();
   const circleId = params.circleId as string;
-  const supabase = getSupabaseBrowserClient();
+  const supabase = createClient();
 
   const {
     files,

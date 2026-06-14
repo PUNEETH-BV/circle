@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Mail, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,7 +17,7 @@ function VerifyContent() {
   const [isResending, setIsResending] = useState(false);
 
   useEffect(() => {
-    const supabase = getSupabaseBrowserClient();
+    const supabase = createClient();
 
     const {
       data: { subscription },
@@ -41,7 +41,7 @@ function VerifyContent() {
     setIsResending(true);
 
     try {
-      const supabase = getSupabaseBrowserClient();
+      const supabase = createClient();
       const { error } = await supabase.auth.resend({
         type: 'signup',
         email,

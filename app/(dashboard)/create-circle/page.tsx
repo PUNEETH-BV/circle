@@ -7,14 +7,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/client';
 import { generateInviteCode } from '@/lib/utils/generateInviteCode';
 import { toast } from 'sonner';
 import Link from 'next/link';
 
 export default function CreateCirclePage() {
   const router = useRouter();
-  const supabase = getSupabaseBrowserClient();
+  const supabase = createClient();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [inviteCode, setInviteCode] = useState(generateInviteCode());

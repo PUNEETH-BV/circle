@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Circle as CircleIcon, LogOut, Settings, Plus, Users } from 'lucide-react';
-import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/client';
 import { UserAvatar } from '@/components/shared/UserAvatar';
 import { getCircleColor } from '@/lib/utils/getCircleColor';
 import { getInitials } from '@/lib/utils/getInitials';
@@ -19,7 +19,7 @@ interface SidebarProps {
 export function Sidebar({ circles, profile, onClose }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const supabase = getSupabaseBrowserClient();
+  const supabase = createClient();
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();

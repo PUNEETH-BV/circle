@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { useCircle } from '@/lib/hooks/useCircle';
-import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/client';
 import { generateInviteCode } from '@/lib/utils/generateInviteCode';
 import { toast } from 'sonner';
 import type { Category } from '@/types';
@@ -19,7 +19,7 @@ export default function SettingsPage() {
   const params = useParams();
   const router = useRouter();
   const circleId = params.circleId as string;
-  const supabase = getSupabaseBrowserClient();
+  const supabase = createClient();
 
   const { circle, loading: loadingCircle, userRole, refreshCircle } = useCircle(circleId);
   const isAdmin = userRole === 'admin';
