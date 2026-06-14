@@ -14,10 +14,11 @@ import Link from 'next/link';
 interface TopbarProps {
   title?: string;
   profile: Profile | null;
+  email?: string;
   onMenuClick: () => void;
 }
 
-export function Topbar({ title, profile, onMenuClick }: TopbarProps) {
+export function Topbar({ title, profile, email, onMenuClick }: TopbarProps) {
   const params = useParams();
   const router = useRouter();
   const supabase = createClient();
@@ -204,9 +205,11 @@ export function Topbar({ title, profile, onMenuClick }: TopbarProps) {
         <button className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-colors">
           <Bell className="w-5 h-5" />
         </button>
-        {profile && (
-          <UserAvatar name={profile.full_name} avatarUrl={profile.avatar_url} size="sm" />
-        )}
+        <UserAvatar
+          name={profile?.full_name || email || 'User'}
+          avatarUrl={profile?.avatar_url}
+          size="sm"
+        />
       </div>
     </header>
   );

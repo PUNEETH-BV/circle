@@ -10,16 +10,17 @@ interface AppShellProps {
   profile: Profile | null;
   circles: Circle[];
   children: React.ReactNode;
+  userEmail?: string;
 }
 
-export function AppShell({ profile, circles, children }: AppShellProps) {
+export function AppShell({ profile, circles, children, userEmail }: AppShellProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-surface">
       {/* Desktop sidebar */}
       <aside className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:flex lg:w-[260px] lg:flex-col">
-        <Sidebar circles={circles} profile={profile} />
+        <Sidebar circles={circles} profile={profile} email={userEmail} />
       </aside>
 
       {/* Mobile drawer */}
@@ -28,12 +29,14 @@ export function AppShell({ profile, circles, children }: AppShellProps) {
         onClose={() => setDrawerOpen(false)}
         circles={circles}
         profile={profile}
+        email={userEmail}
       />
 
       {/* Main content */}
       <div className="lg:pl-[260px]">
         <Topbar
           profile={profile}
+          email={userEmail}
           onMenuClick={() => setDrawerOpen(true)}
         />
         <main className="p-4 md:p-6 lg:p-8">

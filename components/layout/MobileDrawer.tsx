@@ -9,9 +9,10 @@ interface MobileDrawerProps {
   onClose: () => void;
   circles: Circle[];
   profile: Profile | null;
+  email?: string;
 }
 
-export function MobileDrawer({ open, onClose, circles, profile }: MobileDrawerProps) {
+export function MobileDrawer({ open, onClose, circles, profile, email }: MobileDrawerProps) {
   if (!open) return null;
 
   return (
@@ -28,7 +29,7 @@ export function MobileDrawer({ open, onClose, circles, profile }: MobileDrawerPr
             <X className="w-5 h-5" />
           </button>
         </div>
-        <Sidebar circles={circles} profile={profile} onClose={onClose} />
+        <Sidebar circles={circles} profile={profile} email={email} onClose={onClose} />
       </div>
     </div>
   );

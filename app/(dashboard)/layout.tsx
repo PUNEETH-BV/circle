@@ -26,7 +26,7 @@ export default async function DashboardLayout({
   const circles = memberships?.map((m: any) => m.circles).filter(Boolean) || [];
 
   return (
-    <AppShell profile={profile} circles={circles}>
+    <AppShell profile={profile} circles={circles} userEmail={user.email}>
       {children}
     </AppShell>
   );

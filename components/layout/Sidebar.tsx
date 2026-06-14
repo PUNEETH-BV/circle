@@ -13,10 +13,11 @@ import type { Circle, Profile } from '@/types';
 interface SidebarProps {
   circles: Circle[];
   profile: Profile | null;
+  email?: string;
   onClose?: () => void;
 }
 
-export function Sidebar({ circles, profile, onClose }: SidebarProps) {
+export function Sidebar({ circles, profile, email, onClose }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
@@ -83,21 +84,25 @@ export function Sidebar({ circles, profile, onClose }: SidebarProps) {
 
       {/* User section */}
       <div className="border-t border-slate-100 p-4">
-        {profile && (
-          <div className="flex items-center gap-3">
-            <UserAvatar name={profile.full_name} avatarUrl={profile.avatar_url} size="sm" />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-slate-900 truncate">{profile.full_name}</p>
-            </div>
-            <button
-              onClick={handleSignOut}
-              className="p-2 text-slate-400 hover:text-red-500 rounded-lg hover:bg-slate-50 transition-colors"
-              title="Sign out"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
+        <div className="flex items-center gap-3">
+          <UserAvatar
+            name={profile?.full_name || email || 'User'}
+            avatarUrl={profile?.avatar_url}
+            size="sm"
+          />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-slate-900 truncate">
+              {profile?.full_name || email || 'User'}
+            </p>
           </div>
-        )}
+          <button
+            onClick={handleSignOut}
+            className="p-2 text-slate-400 hover:text-red-500 rounded-lg hover:bg-slate-50 transition-colors"
+            title="Sign out"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
+        </div>
       </div>
     </div>
   );
