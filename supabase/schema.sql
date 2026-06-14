@@ -93,6 +93,32 @@ alter table public.notes enable row level security;
 alter table public.announcements enable row level security;
 
 -- ==========================================
+-- STEP 2.5: HELPER FUNCTIONS FOR POLICIES
+-- (Defined as security definer to bypass RLS and prevent infinite recursion)
+-- ==========================================
+
+create or replace function public.get_my_circle_ids()
+returns table (circle_id uuid) as $$
+begin
+  return query
+  select cm.circle_id from public.circle_members cm
+  where cm.user_id = auth.uid();
+end;
+$$ language plpgsql security definer;
+
+create or replace function public.is_circle_admin(circle_id uuid)
+returns boolean as $$
+begin
+  return exists (
+    select 1 from public.circle_members cm
+    where cm.circle_id = $1
+      and cm.user_id = auth.uid()
+      and cm.role = 'admin'
+  );
+end;
+$$ language plpgsql security definer;
+
+-- ==========================================
 -- STEP 3: ALL POLICIES (all tables exist now)
 -- ==========================================
 
@@ -109,11 +135,7 @@ create policy "Users can update their own profile" on public.profiles
 -- CIRCLES
 create policy "Circles are viewable by members" on public.circles
   for select using (
-    exists (
-      select 1 from public.circle_members
-      where circle_members.circle_id = circles.id
-        and circle_members.user_id = auth.uid()
-    )
+    id in (select public.get_my_circle_ids())
   );
 
 create policy "Authenticated users can create circles" on public.circles
@@ -121,32 +143,18 @@ create policy "Authenticated users can create circles" on public.circles
 
 create policy "Admins can update circles" on public.circles
   for update using (
-    exists (
-      select 1 from public.circle_members
-      where circle_members.circle_id = circles.id
-        and circle_members.user_id = auth.uid()
-        and circle_members.role = 'admin'
-    )
+    public.is_circle_admin(id)
   );
 
 create policy "Admins can delete circles" on public.circles
   for delete using (
-    exists (
-      select 1 from public.circle_members
-      where circle_members.circle_id = circles.id
-        and circle_members.user_id = auth.uid()
-        and circle_members.role = 'admin'
-    )
+    public.is_circle_admin(id)
   );
 
 -- CIRCLE MEMBERS
 create policy "Members can view other members" on public.circle_members
   for select using (
-    exists (
-      select 1 from public.circle_members as cm
-      where cm.circle_id = circle_members.circle_id
-        and cm.user_id = auth.uid()
-    )
+    circle_id in (select public.get_my_circle_ids())
   );
 
 create policy "Authenticated users can join circles" on public.circle_members
@@ -154,157 +162,88 @@ create policy "Authenticated users can join circles" on public.circle_members
 
 create policy "Admins can update members" on public.circle_members
   for update using (
-    exists (
-      select 1 from public.circle_members as cm
-      where cm.circle_id = circle_members.circle_id
-        and cm.user_id = auth.uid()
-        and cm.role = 'admin'
-    )
+    public.is_circle_admin(circle_id)
   );
 
 create policy "Admins can remove members or members can leave" on public.circle_members
   for delete using (
     auth.uid() = user_id
-    or exists (
-      select 1 from public.circle_members as cm
-      where cm.circle_id = circle_members.circle_id
-        and cm.user_id = auth.uid()
-        and cm.role = 'admin'
-    )
+    or public.is_circle_admin(circle_id)
   );
 
 -- CATEGORIES
 create policy "Categories viewable by circle members" on public.categories
   for select using (
-    exists (
-      select 1 from public.circle_members
-      where circle_members.circle_id = categories.circle_id
-        and circle_members.user_id = auth.uid()
-    )
+    circle_id in (select public.get_my_circle_ids())
   );
 
 create policy "Admins can manage categories" on public.categories
   for all using (
-    exists (
-      select 1 from public.circle_members
-      where circle_members.circle_id = categories.circle_id
-        and circle_members.user_id = auth.uid()
-        and circle_members.role = 'admin'
-    )
+    public.is_circle_admin(circle_id)
   );
 
 -- FILES
 create policy "Files viewable by circle members" on public.files
   for select using (
-    exists (
-      select 1 from public.circle_members
-      where circle_members.circle_id = files.circle_id
-        and circle_members.user_id = auth.uid()
-    )
+    circle_id in (select public.get_my_circle_ids())
   );
 
 create policy "Members can upload files" on public.files
   for insert with check (
     auth.uid() = uploaded_by
-    and exists (
-      select 1 from public.circle_members
-      where circle_members.circle_id = files.circle_id
-        and circle_members.user_id = auth.uid()
-    )
+    and circle_id in (select public.get_my_circle_ids())
   );
 
 create policy "Uploaders and admins can update files" on public.files
   for update using (
     auth.uid() = uploaded_by
-    or exists (
-      select 1 from public.circle_members
-      where circle_members.circle_id = files.circle_id
-        and circle_members.user_id = auth.uid()
-        and circle_members.role = 'admin'
-    )
+    or public.is_circle_admin(circle_id)
   );
 
 create policy "Uploaders and admins can delete files" on public.files
   for delete using (
     auth.uid() = uploaded_by
-    or exists (
-      select 1 from public.circle_members
-      where circle_members.circle_id = files.circle_id
-        and circle_members.user_id = auth.uid()
-        and circle_members.role = 'admin'
-    )
+    or public.is_circle_admin(circle_id)
   );
 
 -- NOTES
 create policy "Notes viewable by circle members" on public.notes
   for select using (
-    exists (
-      select 1 from public.circle_members
-      where circle_members.circle_id = notes.circle_id
-        and circle_members.user_id = auth.uid()
-    )
+    circle_id in (select public.get_my_circle_ids())
   );
 
 create policy "Members can create notes" on public.notes
   for insert with check (
     auth.uid() = author_id
-    and exists (
-      select 1 from public.circle_members
-      where circle_members.circle_id = notes.circle_id
-        and circle_members.user_id = auth.uid()
-    )
+    and circle_id in (select public.get_my_circle_ids())
   );
 
 create policy "Authors and admins can update notes" on public.notes
   for update using (
     auth.uid() = author_id
-    or exists (
-      select 1 from public.circle_members
-      where circle_members.circle_id = notes.circle_id
-        and circle_members.user_id = auth.uid()
-        and circle_members.role = 'admin'
-    )
+    or public.is_circle_admin(circle_id)
   );
 
 create policy "Authors and admins can delete notes" on public.notes
   for delete using (
     auth.uid() = author_id
-    or exists (
-      select 1 from public.circle_members
-      where circle_members.circle_id = notes.circle_id
-        and circle_members.user_id = auth.uid()
-        and circle_members.role = 'admin'
-    )
+    or public.is_circle_admin(circle_id)
   );
 
 -- ANNOUNCEMENTS
 create policy "Announcements viewable by circle members" on public.announcements
   for select using (
-    exists (
-      select 1 from public.circle_members
-      where circle_members.circle_id = announcements.circle_id
-        and circle_members.user_id = auth.uid()
-    )
+    circle_id in (select public.get_my_circle_ids())
   );
 
 create policy "Admins can create announcements" on public.announcements
   for insert with check (
-    exists (
-      select 1 from public.circle_members
-      where circle_members.circle_id = announcements.circle_id
-        and circle_members.user_id = auth.uid()
-        and circle_members.role = 'admin'
-    )
+    public.is_circle_admin(circle_id)
   );
 
 create policy "Admins can delete announcements" on public.announcements
   for delete using (
-    exists (
-      select 1 from public.circle_members
-      where circle_members.circle_id = announcements.circle_id
-        and circle_members.user_id = auth.uid()
-        and circle_members.role = 'admin'
-    )
+    public.is_circle_admin(circle_id)
   );
 
 -- ==========================================
