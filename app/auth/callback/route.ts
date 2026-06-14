@@ -6,9 +6,13 @@ import type { NextRequest } from 'next/server'
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
+  const next = requestUrl.searchParams.get('next') ?? '/'
+
+  // Create the redirect response first so we can attach cookies directly to it
+  const response = NextResponse.redirect(new URL(next, requestUrl.origin))
 
   if (code) {
-    const cookieStore = await cookies()
+    const cookieStore = cookies()
 
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -19,9 +23,10 @@ export async function GET(request: NextRequest) {
             return cookieStore.getAll()
           },
           setAll(cookiesToSet: { name: string; value: string; options: any }[]) {
-            cookiesToSet.forEach(({ name, value, options }) =>
+            cookiesToSet.forEach(({ name, value, options }) => {
               cookieStore.set(name, value, options)
-            )
+              response.cookies.set(name, value, options)
+            })
           },
         },
       }
@@ -30,7 +35,7 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.exchangeCodeForSession(code)
 
     if (!error) {
-      return NextResponse.redirect(new URL('/', requestUrl.origin))
+      return response
     }
 
     console.error('OAuth error:', error.message)
