@@ -6,6 +6,15 @@ export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname
   console.log(`[Middleware] Request: ${path}`)
 
+  // Early exit for the callback route — session is being set here.
+  // We must not run getUser() or touch cookies/response before it reaches the Route Handler,
+  // otherwise the PKCE code verifier cookie can be dropped or corrupted.
+  const isCallbackRoute = path.startsWith('/auth/callback')
+  if (isCallbackRoute) {
+    console.log(`[Middleware] Allowing callback route (Early exit).`)
+    return NextResponse.next()
+  }
+
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -37,12 +46,6 @@ export async function middleware(request: NextRequest) {
   console.log(`[Middleware] User:`, user ? user.email : 'null')
 
   const isAuthRoute = path.startsWith('/auth')
-  const isCallbackRoute = path.startsWith('/auth/callback')
-
-  if (isCallbackRoute) {
-    console.log(`[Middleware] Allowing callback route.`)
-    return supabaseResponse
-  }
 
   // If not logged in and not on an auth page, send to login
   if (!user && !isAuthRoute) {
