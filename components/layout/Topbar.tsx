@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Menu, Bell, Search, FileText, File, Loader2, X } from 'lucide-react';
 import { UserAvatar } from '@/components/shared/UserAvatar';
-import { createClient } from '@/lib/supabase/client';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { getFileIcon } from '@/lib/utils/getFileIcon';
 import * as Icons from 'lucide-react';
 import type { Profile } from '@/types';
@@ -20,7 +20,7 @@ interface TopbarProps {
 export function Topbar({ title, profile, onMenuClick }: TopbarProps) {
   const params = useParams();
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = getSupabaseBrowserClient();
   const circleId = params.circleId as string;
 
   const [query, setQuery] = useState('');

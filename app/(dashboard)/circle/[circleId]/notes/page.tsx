@@ -8,13 +8,13 @@ import { Input } from '@/components/ui/input';
 import { NoteList } from '@/components/notes/NoteList';
 import { useNotes } from '@/lib/hooks/useNotes';
 import { useCircle } from '@/lib/hooks/useCircle';
-import { createClient } from '@/lib/supabase/client';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 
 export default function NotesPage() {
   const params = useParams();
   const circleId = params.circleId as string;
-  const supabase = createClient();
+  const supabase = getSupabaseBrowserClient();
 
   const {
     notes,

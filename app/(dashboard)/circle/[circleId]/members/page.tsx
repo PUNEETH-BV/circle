@@ -10,7 +10,7 @@ import { UserAvatar } from '@/components/shared/UserAvatar';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { useMembers } from '@/lib/hooks/useMembers';
 import { useCircle } from '@/lib/hooks/useCircle';
-import { createClient } from '@/lib/supabase/client';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { formatDate } from '@/lib/utils/formatDate';
 import { toast } from 'sonner';
 import { QRCodeSVG } from 'qrcode.react';
@@ -18,7 +18,7 @@ import { QRCodeSVG } from 'qrcode.react';
 export default function MembersPage() {
   const params = useParams();
   const circleId = params.circleId as string;
-  const supabase = createClient();
+  const supabase = getSupabaseBrowserClient();
 
   const {
     members,

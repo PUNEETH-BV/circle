@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import type { FileRecord, Category } from '@/types';
 import { toast } from 'sonner';
 
 export function useFiles(circleId: string) {
-  const supabase = createClient();
+  const supabase = getSupabaseBrowserClient();
   const [files, setFiles] = useState<FileRecord[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);

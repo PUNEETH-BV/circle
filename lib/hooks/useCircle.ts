@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import type { Circle, Announcement, CircleMember } from '@/types';
 
 export function useCircle(circleId: string) {
-  const supabase = createClient();
+  const supabase = getSupabaseBrowserClient();
   const [circle, setCircle] = useState<Circle | null>(null);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);

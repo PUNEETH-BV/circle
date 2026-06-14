@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { NoteEditor } from '@/components/notes/NoteEditor';
 import { useNotes } from '@/lib/hooks/useNotes';
-import { createClient } from '@/lib/supabase/client';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { Note } from '@/types';
@@ -14,7 +14,7 @@ export default function NoteDetailPage() {
   const router = useRouter();
   const circleId = params.circleId as string;
   const noteId = params.noteId as string;
-  const supabase = createClient();
+  const supabase = getSupabaseBrowserClient();
 
   const { updateNote } = useNotes(circleId);
   const [note, setNote] = useState<Note | null>(null);

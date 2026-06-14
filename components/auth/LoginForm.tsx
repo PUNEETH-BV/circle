@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { z } from 'zod';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { createClient } from '@/lib/supabase/client';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -55,7 +55,7 @@ export function LoginForm() {
     setIsLoading(true);
 
     try {
-      const supabase = createClient();
+      const supabase = getSupabaseBrowserClient();
       const { error } = await supabase.auth.signInWithPassword({
         email: result.data.email,
         password: result.data.password,
@@ -91,7 +91,7 @@ export function LoginForm() {
     }
 
     try {
-      const supabase = createClient();
+      const supabase = getSupabaseBrowserClient();
       const { error } = await supabase.auth.resetPasswordForEmail(formData.email);
 
       if (error) {

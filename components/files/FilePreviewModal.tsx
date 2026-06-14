@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { X, ZoomIn, ZoomOut, ChevronLeft, ChevronRight, ExternalLink, Download, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatFileSize } from '@/lib/utils/formatFileSize';
-import { createClient } from '@/lib/supabase/client';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import type { FileRecord } from '@/types';
 import dynamic from 'next/dynamic';
 
@@ -25,7 +25,7 @@ interface FilePreviewModalProps {
 }
 
 export function FilePreviewModal({ file, onClose, onDownload }: FilePreviewModalProps) {
-  const supabase = createClient();
+  const supabase = getSupabaseBrowserClient();
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const [loadingUrl, setLoadingUrl] = useState(false);
   
