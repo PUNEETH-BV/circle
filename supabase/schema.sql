@@ -136,6 +136,7 @@ create policy "Users can update their own profile" on public.profiles
 create policy "Circles are viewable by members" on public.circles
   for select using (
     id in (select public.get_my_circle_ids())
+    or created_by = auth.uid()
   );
 
 create policy "Authenticated users can create circles" on public.circles
@@ -155,6 +156,7 @@ create policy "Admins can delete circles" on public.circles
 create policy "Members can view other members" on public.circle_members
   for select using (
     circle_id in (select public.get_my_circle_ids())
+    or user_id = auth.uid()
   );
 
 create policy "Authenticated users can join circles" on public.circle_members
@@ -302,3 +304,21 @@ alter publication supabase_realtime add table public.files;
 alter publication supabase_realtime add table public.notes;
 alter publication supabase_realtime add table public.announcements;
 alter publication supabase_realtime add table public.circle_members;
+
+-- ==========================================
+-- STEP 6: BACKFILL PROFILES FOR EXISTING USERS
+-- ==========================================
+insert into public.profiles (id, full_name, avatar_url)
+select 
+  id,
+  coalesce(
+    raw_user_meta_data->>'full_name',
+    raw_user_meta_data->>'name',
+    split_part(email, '@', 1)
+  ),
+  coalesce(
+    raw_user_meta_data->>'avatar_url',
+    raw_user_meta_data->>'picture'
+  )
+from auth.users
+on conflict (id) do nothing;
