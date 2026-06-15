@@ -69,7 +69,7 @@ export function useCircle(circleId: string) {
     }
   }
 
-  async function createAnnouncement(title: string, body: string) {
+  async function createAnnouncement(title: string, body: string, media?: { url: string; type: 'image' | 'video' }[]) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const { error } = await supabase
@@ -79,6 +79,7 @@ export function useCircle(circleId: string) {
         author_id: user.id,
         title,
         body,
+        media: media || [],
       });
     if (error) throw error;
   }

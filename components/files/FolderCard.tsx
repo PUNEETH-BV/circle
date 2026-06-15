@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Folder as FolderIcon, MoreVertical, Trash2, Edit2, Pin, ArrowRight } from 'lucide-react';
+import { Folder as FolderIcon, MoreVertical, Trash2, Edit2, Pin, ArrowRight, Link2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { UserAvatar } from '@/components/shared/UserAvatar';
@@ -9,6 +9,7 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { formatDate } from '@/lib/utils/formatDate';
 import type { Folder, Category } from '@/types';
 import Link from 'next/link';
+import { toast } from 'sonner';
 
 interface FolderCardProps {
   folder: Folder;
@@ -153,37 +154,53 @@ export function FolderCard({
           </div>
 
           {/* Action options */}
-          {canManage && (
-            <div className="flex opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity gap-0.5">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="w-7 h-7 hover:text-indigo-600 hover:bg-indigo-50"
-                onClick={() => onPin(folder.id, !folder.pinned)}
-                title={folder.pinned ? 'Unpin' : 'Pin'}
-              >
-                <Pin className="w-3.5 h-3.5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="w-7 h-7 hover:text-indigo-600 hover:bg-indigo-50"
-                onClick={() => setIsEditing(true)}
-                title="Edit Folder"
-              >
-                <Edit2 className="w-3.5 h-3.5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="w-7 h-7 hover:text-red-600 hover:bg-red-50"
-                onClick={() => setShowDeleteConfirm(true)}
-                title="Delete Folder"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </Button>
-            </div>
-          )}
+          <div className="flex opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity gap-0.5">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="w-7 h-7 hover:text-indigo-600 hover:bg-indigo-50"
+              onClick={() => {
+                const url = `${window.location.origin}/circle/${circleId}/files/${folder.id}`;
+                navigator.clipboard.writeText(url);
+                toast.success('Folder link copied to clipboard!');
+              }}
+              title="Copy Link"
+            >
+              <Link2 className="w-3.5 h-3.5" />
+            </Button>
+
+            {canManage && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="w-7 h-7 hover:text-indigo-600 hover:bg-indigo-50"
+                  onClick={() => onPin(folder.id, !folder.pinned)}
+                  title={folder.pinned ? 'Unpin' : 'Pin'}
+                >
+                  <Pin className="w-3.5 h-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="w-7 h-7 hover:text-indigo-600 hover:bg-indigo-50"
+                  onClick={() => setIsEditing(true)}
+                  title="Edit Folder"
+                >
+                  <Edit2 className="w-3.5 h-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="w-7 h-7 hover:text-red-600 hover:bg-red-50"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  title="Delete Folder"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Description */}

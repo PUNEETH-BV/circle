@@ -10,6 +10,7 @@ import { formatDate } from '@/lib/utils/formatDate';
 import { cn } from '@/lib/utils';
 import type { FileRecord } from '@/types';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
+import { toast } from 'sonner';
 
 interface FileCardProps {
   file: FileRecord;
@@ -81,6 +82,19 @@ export function FileCard({
 
         {/* Action Buttons */}
         <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="w-8 h-8 hover:text-indigo-600 hover:bg-indigo-50"
+            onClick={() => {
+              const url = `${window.location.origin}/circle/${file.circle_id}/files/${file.folder_id || ''}?fileId=${file.id}`;
+              navigator.clipboard.writeText(url);
+              toast.success('File link copied to clipboard!');
+            }}
+            title="Copy Link"
+          >
+            <Icons.Link2 className="w-4 h-4" />
+          </Button>
           <Button
             variant="ghost"
             size="icon"
@@ -158,6 +172,19 @@ export function FileCard({
             
             {/* Action buttons (always visible on hover or focus) */}
             <div className="flex opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity gap-0.5">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="w-7 h-7 hover:text-indigo-600 hover:bg-indigo-50"
+                onClick={() => {
+                  const url = `${window.location.origin}/circle/${file.circle_id}/files/${file.folder_id || ''}?fileId=${file.id}`;
+                  navigator.clipboard.writeText(url);
+                  toast.success('File link copied to clipboard!');
+                }}
+                title="Copy Link"
+              >
+                <Icons.Link2 className="w-3.5 h-3.5" />
+              </Button>
               <Button
                 variant="ghost"
                 size="icon"

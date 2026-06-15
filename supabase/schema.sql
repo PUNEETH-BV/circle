@@ -649,4 +649,9 @@ CREATE TRIGGER on_file_uploaded
 alter publication supabase_realtime add table public.notifications;
 alter publication supabase_realtime add table public.notification_subscriptions;
 
+-- ==========================================
+-- STEP 9: ANNOUNCEMENTS MEDIA
+-- ==========================================
+ALTER TABLE public.announcements ADD COLUMN IF NOT EXISTS media JSONB DEFAULT '[]'::jsonb;
+
 

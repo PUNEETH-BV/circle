@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useCircle } from '@/lib/hooks/useCircle';
-import { Copy, Check, Megaphone, Plus, Activity } from 'lucide-react';
+import { Copy, Check, Megaphone, Plus, Activity, Paperclip, X, Film, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,8 @@ import { getCircleColor } from '@/lib/utils/getCircleColor';
 import { getInitials } from '@/lib/utils/getInitials';
 import { formatDate } from '@/lib/utils/formatDate';
 import { toast } from 'sonner';
+import { createClient } from '@/lib/supabase/client';
+import { cn } from '@/lib/utils';
 
 export default function CircleHomePage({ params }: { params: { circleId: string } }) {
   const { circleId } = params;
@@ -22,7 +24,9 @@ export default function CircleHomePage({ params }: { params: { circleId: string 
   const [showAnnouncementForm, setShowAnnouncementForm] = useState(false);
   const [announcementTitle, setAnnouncementTitle] = useState('');
   const [announcementBody, setAnnouncementBody] = useState('');
+  const [mediaFiles, setMediaFiles] = useState<File[]>([]);
   const [posting, setPosting] = useState(false);
+  const supabase = createClient();
 
   const copyInviteCode = () => {
     if (!circle) return;
@@ -40,13 +44,45 @@ export default function CircleHomePage({ params }: { params: { circleId: string 
     }
     setPosting(true);
     try {
-      await createAnnouncement(announcementTitle.trim(), announcementBody.trim());
+      const uploadedMedia: { url: string; type: 'image' | 'video' }[] = [];
+
+      for (const file of mediaFiles) {
+        if (file.size > 20 * 1024 * 1024) {
+          toast.error(`File "${file.name}" exceeds 20MB limit and was skipped.`);
+          continue;
+        }
+
+        const filePath = `${circleId}/announcements/${Date.now()}-${file.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from('circle-files')
+          .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('circle-files')
+          .getPublicUrl(filePath);
+
+        uploadedMedia.push({
+          url: publicUrl,
+          type: file.type.startsWith('image/') ? 'image' : 'video'
+        });
+      }
+
+      await createAnnouncement(
+        announcementTitle.trim(),
+        announcementBody.trim(),
+        uploadedMedia
+      );
+
       setAnnouncementTitle('');
       setAnnouncementBody('');
+      setMediaFiles([]);
       setShowAnnouncementForm(false);
       toast.success('Announcement posted!');
-    } catch {
-      toast.error('Failed to post announcement');
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Failed to post announcement: ' + err.message);
     } finally {
       setPosting(false);
     }
@@ -116,20 +152,86 @@ export default function CircleHomePage({ params }: { params: { circleId: string 
               placeholder="Announcement title"
               value={announcementTitle}
               onChange={(e) => setAnnouncementTitle(e.target.value)}
+              disabled={posting}
             />
             <Textarea
               placeholder="What would you like to announce?"
               value={announcementBody}
               onChange={(e) => setAnnouncementBody(e.target.value)}
               rows={3}
+              disabled={posting}
             />
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" size="sm" onClick={() => setShowAnnouncementForm(false)}>
-                Cancel
-              </Button>
-              <Button size="sm" onClick={handlePostAnnouncement} disabled={posting}>
-                {posting ? 'Posting...' : 'Post Announcement'}
-              </Button>
+
+            {/* Thumbnail previews */}
+            {mediaFiles.length > 0 && (
+              <div className="flex flex-wrap gap-2 pt-1">
+                {mediaFiles.map((file, idx) => (
+                  <div key={idx} className="relative w-16 h-16 rounded-lg border border-slate-200 overflow-hidden bg-slate-50 flex items-center justify-center">
+                    {file.type.startsWith('image/') ? (
+                      <img 
+                        src={URL.createObjectURL(file)} 
+                        alt="Preview" 
+                        className="w-full h-full object-cover" 
+                      />
+                    ) : (
+                      <Film className="w-6 h-6 text-slate-400" />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setMediaFiles(prev => prev.filter((_, i) => i !== idx))}
+                      className="absolute top-1 right-1 w-4 h-4 bg-slate-900/60 rounded-full flex items-center justify-center text-white hover:bg-slate-900 transition-colors"
+                      disabled={posting}
+                    >
+                      <X className="w-2.5 h-2.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+              <div>
+                <input
+                  id="mediaPicker"
+                  type="file"
+                  accept="image/*,video/*"
+                  multiple
+                  onChange={(e) => {
+                    if (e.target.files) {
+                      const filesArray = Array.from(e.target.files);
+                      setMediaFiles(prev => [...prev, ...filesArray]);
+                    }
+                  }}
+                  className="hidden"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => document.getElementById('mediaPicker')?.click()}
+                  disabled={posting}
+                  className="text-slate-500 gap-1.5 h-8 text-xs"
+                >
+                  <Paperclip className="w-3.5 h-3.5" />
+                  <span>Attach Photos/Videos</span>
+                </Button>
+              </div>
+
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" size="sm" onClick={() => {
+                  setShowAnnouncementForm(false);
+                  setMediaFiles([]);
+                }} disabled={posting} className="h-8 text-xs">
+                  Cancel
+                </Button>
+                <Button size="sm" onClick={handlePostAnnouncement} disabled={posting} className="bg-indigo-600 hover:bg-indigo-700 h-8 text-xs">
+                  {posting ? (
+                    <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Posting...</>
+                  ) : (
+                    'Post Announcement'
+                  )}
+                </Button>
+              </div>
             </div>
           </div>
         )}
@@ -140,13 +242,44 @@ export default function CircleHomePage({ params }: { params: { circleId: string 
               <div key={a.id} className="bg-white rounded-xl border border-slate-100 p-4">
                 <div className="flex items-start gap-3">
                   <UserAvatar name={a.author?.full_name || 'User'} avatarUrl={a.author?.avatar_url} size="sm" />
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-sm text-slate-900">{a.author?.full_name || 'User'}</span>
                       <span className="text-xs text-slate-400">{formatDate(a.created_at)}</span>
                     </div>
-                    <h4 className="font-semibold text-slate-900 mt-1">{a.title}</h4>
-                    <p className="text-sm text-slate-600 mt-1">{a.body}</p>
+                    <h4 className="font-semibold text-slate-900 mt-1 text-sm">{a.title}</h4>
+                    <p className="text-sm text-slate-600 mt-1 leading-relaxed break-words">{a.body}</p>
+
+                    {/* Announcement Media Attachments */}
+                    {a.media && Array.isArray(a.media) && a.media.length > 0 && (
+                      <div className={cn(
+                        "mt-3 gap-2 grid",
+                        a.media.length === 1 ? "grid-cols-1" : "grid-cols-2"
+                      )}>
+                        {a.media.map((item: any, idx: number) => (
+                          <div 
+                            key={idx} 
+                            className="relative rounded-lg overflow-hidden border border-slate-100 bg-slate-50 max-h-60 flex items-center justify-center"
+                          >
+                            {item.type === 'image' ? (
+                              <img 
+                                src={item.url} 
+                                alt={`Attachment ${idx + 1}`} 
+                                className="w-full h-full object-cover max-h-60 hover:scale-[1.01] transition-transform duration-200 cursor-zoom-in"
+                                onClick={() => window.open(item.url, '_blank')}
+                              />
+                            ) : (
+                              <video 
+                                src={item.url} 
+                                controls 
+                                className="w-full h-full object-contain max-h-60"
+                                preload="metadata"
+                              />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

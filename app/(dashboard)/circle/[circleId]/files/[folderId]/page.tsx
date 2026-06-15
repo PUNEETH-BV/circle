@@ -50,6 +50,20 @@ export default function FolderDetailPage() {
     });
   }, [circleId, folderId]);
 
+  // Automatic preview if fileId param is present on page load
+  useEffect(() => {
+    if (typeof window !== 'undefined' && files.length > 0) {
+      const searchParams = new URLSearchParams(window.location.search);
+      const fileIdParam = searchParams.get('fileId');
+      if (fileIdParam) {
+        const fileToPreview = files.find(f => f.id === fileIdParam);
+        if (fileToPreview) {
+          setPreviewFile(fileToPreview);
+        }
+      }
+    }
+  }, [files]);
+
   async function fetchFolderDetails() {
     setLoadingFolder(true);
     try {
@@ -192,7 +206,14 @@ export default function FolderDetailPage() {
       {/* Preview Modal */}
       <FilePreviewModal
         file={previewFile}
-        onClose={() => setPreviewFile(null)}
+        onClose={() => {
+          setPreviewFile(null);
+          if (typeof window !== 'undefined') {
+            const url = new URL(window.location.href);
+            url.searchParams.delete('fileId');
+            window.history.replaceState({}, '', url.pathname + url.search);
+          }
+        }}
         onDownload={downloadFile}
       />
     </div>

@@ -74,6 +74,7 @@ export interface Announcement {
   author_id: string;
   title: string;
   body: string;
+  media?: { url: string; type: 'image' | 'video' }[];
   created_at: string;
   author?: Profile;
 }
