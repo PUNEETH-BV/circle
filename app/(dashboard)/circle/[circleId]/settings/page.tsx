@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Trash2, ShieldAlert, Key, FolderPlus, ArrowUp, ArrowDown, Edit2, Check, X, Camera, Loader2 } from 'lucide-react';
+import { Trash2, ShieldAlert, Key, FolderPlus, ArrowUp, ArrowDown, Edit2, Check, X, Camera, Loader2, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,6 +14,21 @@ import { generateInviteCode } from '@/lib/utils/generateInviteCode';
 import { toast } from 'sonner';
 import type { Category } from '@/types';
 import { cn } from '@/lib/utils';
+
+const PRESET_CATEGORIES = [
+  { name: 'Assignments', emoji: '📝' },
+  { name: 'Resources', emoji: '📚' },
+  { name: 'Projects', emoji: '🚀' },
+  { name: 'Lectures', emoji: '🎓' },
+  { name: 'Design', emoji: '🎨' },
+  { name: 'Code', emoji: '💻' },
+  { name: 'Research', emoji: '🔬' },
+  { name: 'Meeting Notes', emoji: '📋' },
+  { name: 'Finance', emoji: '💰' },
+  { name: 'Announcements', emoji: '📣' },
+  { name: 'Exams', emoji: '✍️' },
+  { name: 'Templates', emoji: '🗂️' },
+];
 
 export default function SettingsPage() {
   const params = useParams();
@@ -436,17 +451,62 @@ export default function SettingsPage() {
           </p>
         </div>
 
-        {/* Add Category Form */}
+        {/* Quick-add preset chips */}
+        <div>
+          <p className="text-xs font-medium text-slate-500 mb-2">Quick add preset</p>
+          <div className="flex flex-wrap gap-2">
+            {PRESET_CATEGORIES.map((preset) => {
+              const alreadyExists = categories.some(
+                (c) => c.name.toLowerCase() === preset.name.toLowerCase()
+              );
+              return (
+                <button
+                  key={preset.name}
+                  type="button"
+                  disabled={alreadyExists}
+                  onClick={async () => {
+                    if (alreadyExists) return;
+                    try {
+                      const { error } = await supabase.from('categories').insert({
+                        circle_id: circleId,
+                        name: preset.name,
+                        icon: 'Folder',
+                        position: categories.length,
+                      });
+                      if (error) throw error;
+                      toast.success(`"${preset.name}" added`);
+                      fetchCategories();
+                    } catch (err: any) {
+                      toast.error('Failed: ' + err.message);
+                    }
+                  }}
+                  className={cn(
+                    'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all',
+                    alreadyExists
+                      ? 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed'
+                      : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50'
+                  )}
+                >
+                  <span>{preset.emoji}</span>
+                  <span>{preset.name}</span>
+                  {alreadyExists ? <Check className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Custom / Add Category Form */}
         <form onSubmit={handleAddCategory} className="flex gap-2 max-w-md">
           <Input
             value={newCatName}
             onChange={(e) => setNewCatName(e.target.value)}
-            placeholder="e.g. Design assets, Docs..."
+            placeholder="Or type a custom category name..."
             className="h-9"
           />
           <Button type="submit" size="sm" className="h-9 gap-1 flex-shrink-0">
             <FolderPlus className="w-4 h-4" />
-            <span>Add Category</span>
+            <span>Add</span>
           </Button>
         </form>
 
