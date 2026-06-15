@@ -654,4 +654,52 @@ alter publication supabase_realtime add table public.notification_subscriptions;
 -- ==========================================
 ALTER TABLE public.announcements ADD COLUMN IF NOT EXISTS media JSONB DEFAULT '[]'::jsonb;
 
+-- ==========================================
+-- STEP 10: ANNOUNCEMENT NOTIFICATIONS
+-- Notify every circle member when an admin posts an announcement
+-- ==========================================
+
+CREATE OR REPLACE FUNCTION public.handle_new_announcement()
+RETURNS TRIGGER AS $$
+DECLARE
+  v_circle_name TEXT;
+  v_poster_name TEXT;
+  v_member RECORD;
+BEGIN
+  -- Get circle name
+  SELECT name INTO v_circle_name FROM public.circles WHERE id = NEW.circle_id;
+
+  -- Get poster display name
+  SELECT COALESCE(full_name, username, 'Admin') INTO v_poster_name
+  FROM public.profiles
+  WHERE id = NEW.author_id;
+
+  -- Notify every member of the circle (except the poster)
+  FOR v_member IN
+    SELECT user_id FROM public.circle_members
+    WHERE circle_id = NEW.circle_id
+      AND user_id <> NEW.author_id
+  LOOP
+    INSERT INTO public.notifications (user_id, type, title, body, data)
+    VALUES (
+      v_member.user_id,
+      'new_announcement',
+      v_circle_name || ' — New Post',
+      v_poster_name || ' posted: ' || LEFT(NEW.content, 80),
+      jsonb_build_object(
+        'circle_id', NEW.circle_id,
+        'announcement_id', NEW.id,
+        'author_id', NEW.author_id
+      )
+    );
+  END LOOP;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_new_announcement ON public.announcements;
+CREATE TRIGGER on_new_announcement
+  AFTER INSERT ON public.announcements
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_announcement();
 
