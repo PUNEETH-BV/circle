@@ -60,9 +60,10 @@ export function useJoinRequests(circleId: string) {
 
   async function fetchRequests() {
     try {
+      // Use explicit FK hint to avoid ambiguity (join_requests has two FKs to profiles: user_id and reviewed_by)
       const { data, error } = await supabase
         .from('join_requests')
-        .select('*, profile:profiles(*)')
+        .select('*, profile:profiles!join_requests_user_id_fkey(*)')
         .eq('circle_id', circleId)
         .order('requested_at', { ascending: false });
 
