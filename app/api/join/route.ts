@@ -1,9 +1,77 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
+
+export async function GET(request: NextRequest) {
+  try {
+    const supabase = await createServerSupabaseClient();
+    const inviteCode = request.nextUrl.searchParams.get('code');
+
+    if (!inviteCode) {
+      return NextResponse.json({ error: 'Invite code is required' }, { status: 400 });
+    }
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
+
+    // Use RPC to look up circle
+    const { data: circles, error: rpcError } = await supabase
+      .rpc('lookup_circle_by_invite_code', { code: inviteCode });
+
+    if (rpcError || !circles || circles.length === 0) {
+      return NextResponse.json({ error: 'Invalid invite code' }, { status: 404 });
+    }
+
+    const circle = circles[0];
+
+    // Check if already a member
+    const { data: existingMember } = await supabase
+      .from('circle_members')
+      .select('id')
+      .eq('circle_id', circle.id)
+      .eq('user_id', user.id)
+      .single();
+
+    if (existingMember) {
+      return NextResponse.json({ 
+        status: 'joined', 
+        circle: { id: circle.id, name: circle.name, is_private: circle.is_private } 
+      });
+    }
+
+    // Check if pending request exists
+    const { data: existingRequest } = await supabase
+      .from('join_requests')
+      .select('*')
+      .eq('circle_id', circle.id)
+      .eq('user_id', user.id)
+      .single();
+
+    if (existingRequest) {
+      return NextResponse.json({
+        status: existingRequest.status, // 'pending', 'approved', 'rejected'
+        circle: { id: circle.id, name: circle.name, is_private: circle.is_private },
+        existingRequest
+      });
+    }
+
+    return NextResponse.json({
+      status: 'found',
+      circle: { id: circle.id, name: circle.name, is_private: circle.is_private }
+    });
+
+  } catch (error: any) {
+    console.error('Join GET error:', error);
+    return NextResponse.json({ error: error.message || 'Something went wrong' }, { status: 500 });
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient();
+    const adminSupabase = createAdminClient();
     const { inviteCode, message } = await request.json();
 
     if (!inviteCode) {
@@ -15,7 +83,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
-    // Use the security definer RPC function to look up circles by invite code
+    // Use RPC to look up circle
     const { data: circles, error: rpcError } = await supabase
       .rpc('lookup_circle_by_invite_code', { code: inviteCode });
 
@@ -25,8 +93,8 @@ export async function POST(request: NextRequest) {
 
     const circle = circles[0];
 
-    // Ensure the user has a profile row (upsert)
-    const { error: profileError } = await supabase
+    // Ensure the user has a profile row (upsert using adminSupabase so it succeeds)
+    const { error: profileError } = await adminSupabase
       .from('profiles')
       .upsert({
         id: user.id,
@@ -51,26 +119,8 @@ export async function POST(request: NextRequest) {
     }
 
     if (circle.is_private) {
-      // Check for existing join request
-      const { data: existingRequest } = await supabase
-        .from('join_requests')
-        .select('*')
-        .eq('circle_id', circle.id)
-        .eq('user_id', user.id)
-        .single();
-
-      if (existingRequest) {
-        if (existingRequest.status === 'pending') {
-          return NextResponse.json({ error: 'You already have a pending request for this circle', status: 'requested' }, { status: 409 });
-        }
-        if (existingRequest.status === 'approved') {
-          // Double check: if approved request exists but membership was deleted, we let them request again.
-          // Otherwise, they are already a member and would have hit the check above.
-        }
-      }
-
-      // Create join request
-      const { error: requestError } = await supabase
+      // Create or update join request (using admin client to avoid RLS error on update)
+      const { error: requestError } = await adminSupabase
         .from('join_requests')
         .upsert({
           circle_id: circle.id,
@@ -101,7 +151,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ status: 'joined', circleId: circle.id, circleName: circle.name });
     }
   } catch (error: any) {
-    console.error('Join route error:', error);
+    console.error('Join POST error:', error);
     return NextResponse.json({ error: error.message || 'Something went wrong' }, { status: 500 });
   }
 }

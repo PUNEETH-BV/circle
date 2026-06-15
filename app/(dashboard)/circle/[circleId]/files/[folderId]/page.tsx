@@ -38,7 +38,7 @@ export default function FolderDetailPage() {
   } = useFiles(circleId, folderId);
 
   const { uploadToFolder } = useFolders(circleId);
-  const { userRole } = useCircle(circleId);
+  const { userRole, canUpload } = useCircle(circleId);
   const isAdmin = userRole === 'admin';
 
   useEffect(() => {
@@ -130,7 +130,12 @@ export default function FolderDetailPage() {
               <span>Back to Folders</span>
             </Button>
           </Link>
-          <Button onClick={() => setAddFilesOpen(true)} className="gap-1.5 h-10 bg-indigo-600 hover:bg-indigo-700">
+          <Button 
+            onClick={() => setAddFilesOpen(true)} 
+            className="gap-1.5 h-10 bg-indigo-600 hover:bg-indigo-700"
+            disabled={!canUpload && !isAdmin}
+            title={(!canUpload && !isAdmin) ? "Upload restricted by administrator" : undefined}
+          >
             <Plus className="w-4 h-4" />
             <span>Add Files</span>
           </Button>

@@ -6,6 +6,9 @@ import { Menu, Bell, Search, FileText, File, Loader2, X } from 'lucide-react';
 import { UserAvatar } from '@/components/shared/UserAvatar';
 import { createClient } from '@/lib/supabase/client';
 import { getFileIcon } from '@/lib/utils/getFileIcon';
+import { useNotifications } from '@/lib/hooks/useNotifications';
+import { NotificationPanel } from '@/components/notifications/NotificationPanel';
+import { NotificationSettingsModal } from '@/components/notifications/NotificationSettingsModal';
 import * as Icons from 'lucide-react';
 import type { Profile } from '@/types';
 import { cn } from '@/lib/utils';
@@ -29,6 +32,16 @@ export function Topbar({ title, profile, email, onMenuClick }: TopbarProps) {
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState<{ files: any[]; notes: any[] }>({ files: [], notes: [] });
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const {
+    notifications,
+    loading,
+    unreadCount,
+    markAsRead,
+    markAllAsRead
+  } = useNotifications();
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -202,8 +215,14 @@ export function Topbar({ title, profile, email, onMenuClick }: TopbarProps) {
       </div>
 
       <div className="flex items-center gap-2 flex-shrink-0">
-        <button className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-colors">
+        <button 
+          onClick={() => setPanelOpen(true)}
+          className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-colors relative"
+        >
           <Bell className="w-5 h-5" />
+          {unreadCount > 0 && (
+            <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-indigo-600 rounded-full ring-2 ring-white animate-pulse" />
+          )}
         </button>
         <UserAvatar
           name={profile?.full_name || email || 'User'}
@@ -211,6 +230,26 @@ export function Topbar({ title, profile, email, onMenuClick }: TopbarProps) {
           size="sm"
         />
       </div>
+
+      <NotificationPanel
+        open={panelOpen}
+        onClose={() => setPanelOpen(false)}
+        notifications={notifications}
+        loading={loading}
+        unreadCount={unreadCount}
+        onMarkAsRead={markAsRead}
+        onMarkAllAsRead={markAllAsRead}
+        onOpenSettings={circleId ? () => setSettingsOpen(true) : undefined}
+      />
+
+      {circleId && (
+        <NotificationSettingsModal
+          open={settingsOpen}
+          onClose={() => setSettingsOpen(false)}
+          circleId={circleId}
+          circleName={title || 'this circle'}
+        />
+      )}
     </header>
   );
 }

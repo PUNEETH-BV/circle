@@ -23,6 +23,7 @@ export interface CircleMember {
   circle_id: string;
   user_id: string;
   role: 'admin' | 'member';
+  can_upload: boolean;
   joined_at: string;
   profile?: Profile;
 }
@@ -102,4 +103,25 @@ export interface JoinRequest {
   reviewed_at?: string;
   reviewed_by?: string;
   profile?: Profile;
+}
+
+export interface AppNotification {
+  id: string;
+  user_id: string;
+  circle_id?: string | null;
+  type: 'join_approved' | 'join_rejected' | 'removed_from_circle' | 'new_join_request' | 'file_uploaded' | 'new_note' | 'new_member';
+  title: string;
+  body?: string | null;
+  is_read: boolean;
+  metadata: any;
+  created_at: string;
+}
+
+export interface NotificationSubscription {
+  id: string;
+  user_id: string;
+  circle_id: string;
+  event_type: string;
+  filter: any;
+  created_at: string;
 }

@@ -443,3 +443,210 @@ CREATE TRIGGER on_file_change_update_folder_count
 alter publication supabase_realtime add table public.folders;
 alter publication supabase_realtime add table public.join_requests;
 
+-- ==========================================
+-- STEP 8: NOTIFICATIONS, UPLOAD PERMISSIONS & RLS FIXES
+-- ==========================================
+
+-- 1. Alter circle_members to add can_upload column
+ALTER TABLE public.circle_members ADD COLUMN IF NOT EXISTS can_upload BOOLEAN DEFAULT TRUE;
+
+-- 2. User update policy on join_requests to allow self-update (e.g. resending/cancelling request)
+DROP POLICY IF EXISTS "Users can update own requests" ON public.join_requests;
+CREATE POLICY "Users can update own requests" ON public.join_requests FOR UPDATE
+  USING (user_id = auth.uid())
+  WITH CHECK (user_id = auth.uid());
+
+-- 3. Notifications Table
+CREATE TABLE IF NOT EXISTS public.notifications (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  circle_id UUID REFERENCES public.circles(id) ON DELETE CASCADE,
+  type TEXT NOT NULL,
+  -- Types: 'join_approved' | 'join_rejected' | 'removed_from_circle' | 'new_join_request' | 'file_uploaded' | 'new_note' | 'new_member'
+  title TEXT NOT NULL,
+  body TEXT,
+  is_read BOOLEAN DEFAULT FALSE,
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- RLS for notifications
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view own notifications" ON public.notifications;
+CREATE POLICY "Users can view own notifications" ON public.notifications FOR SELECT
+  USING (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "Users can update own notifications" ON public.notifications;
+CREATE POLICY "Users can update own notifications" ON public.notifications FOR UPDATE
+  USING (user_id = auth.uid());
+
+-- 4. Notification Subscriptions Table
+CREATE TABLE IF NOT EXISTS public.notification_subscriptions (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  circle_id UUID REFERENCES public.circles(id) ON DELETE CASCADE NOT NULL,
+  event_type TEXT NOT NULL, -- 'file_uploaded' | 'new_note' | 'new_member'
+  filter JSONB DEFAULT '{}',
+  -- For file_uploaded: {"uploader_ids": ["uuid1"]} or {} for all
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, circle_id, event_type)
+);
+
+-- RLS for subscriptions
+ALTER TABLE public.notification_subscriptions ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view own subscriptions" ON public.notification_subscriptions;
+CREATE POLICY "Users can view own subscriptions" ON public.notification_subscriptions FOR SELECT
+  USING (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "Users can manage own subscriptions" ON public.notification_subscriptions;
+CREATE POLICY "Users can manage own subscriptions" ON public.notification_subscriptions FOR ALL
+  USING (user_id = auth.uid());
+
+-- 5. Trigger Functions for Automatic Notifications
+
+-- A. Trigger for join request changes (Insert -> Admin notified, Update to approved/rejected -> User notified)
+CREATE OR REPLACE FUNCTION public.handle_join_request_change()
+RETURNS TRIGGER AS $$
+DECLARE
+  admin_id UUID;
+  circle_name TEXT;
+  user_fullname TEXT;
+BEGIN
+  -- Get circle name
+  SELECT name INTO circle_name FROM public.circles WHERE id = NEW.circle_id;
+  
+  -- Get requestor name
+  SELECT full_name INTO user_fullname FROM public.profiles WHERE id = NEW.user_id;
+
+  IF TG_OP = 'INSERT' THEN
+    -- Notify all circle admins
+    FOR admin_id IN 
+      SELECT user_id FROM public.circle_members 
+      WHERE circle_id = NEW.circle_id AND role = 'admin'
+    LOOP
+      INSERT INTO public.notifications (user_id, circle_id, type, title, body, metadata)
+      VALUES (
+        admin_id,
+        NEW.circle_id,
+        'new_join_request',
+        'New Join Request',
+        coalesce(user_fullname, 'A user') || ' requested to join ' || coalesce(circle_name, 'your circle') || '.',
+        jsonb_build_object('join_request_id', NEW.id, 'requestor_id', NEW.user_id, 'circle_name', circle_name)
+      );
+    END LOOP;
+  ELSIF TG_OP = 'UPDATE' THEN
+    IF OLD.status = 'pending' AND NEW.status = 'approved' THEN
+      -- Notify user
+      INSERT INTO public.notifications (user_id, circle_id, type, title, body, metadata)
+      VALUES (
+        NEW.user_id,
+        NEW.circle_id,
+        'join_approved',
+        'Join Request Approved',
+        'Your request to join ' || coalesce(circle_name, 'the circle') || ' has been approved!',
+        jsonb_build_object('circle_id', NEW.circle_id, 'circle_name', circle_name)
+      );
+    ELSIF OLD.status = 'pending' AND NEW.status = 'rejected' THEN
+      -- Notify user
+      INSERT INTO public.notifications (user_id, circle_id, type, title, body, metadata)
+      VALUES (
+        NEW.user_id,
+        NEW.circle_id,
+        'join_rejected',
+        'Join Request Rejected',
+        'Your request to join ' || coalesce(circle_name, 'the circle') || ' has been rejected.',
+        jsonb_build_object('circle_id', NEW.circle_id, 'circle_name', circle_name)
+      );
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_join_request_change ON public.join_requests;
+CREATE TRIGGER on_join_request_change
+  AFTER INSERT OR UPDATE ON public.join_requests
+  FOR EACH ROW EXECUTE FUNCTION public.handle_join_request_change();
+
+-- B. Trigger for member removal/leave
+CREATE OR REPLACE FUNCTION public.handle_circle_member_remove()
+RETURNS TRIGGER AS $$
+DECLARE
+  circle_name TEXT;
+BEGIN
+  -- Get circle name
+  SELECT name INTO circle_name FROM public.circles WHERE id = OLD.circle_id;
+  
+  -- Insert notification for the removed user
+  INSERT INTO public.notifications (user_id, circle_id, type, title, body, metadata)
+  VALUES (
+    OLD.user_id,
+    OLD.circle_id,
+    'removed_from_circle',
+    'Removed from Circle',
+    'You are no longer a member of ' || coalesce(circle_name, 'the circle') || '.',
+    jsonb_build_object('circle_id', OLD.circle_id, 'circle_name', circle_name)
+  );
+  RETURN OLD;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_circle_member_remove ON public.circle_members;
+CREATE TRIGGER on_circle_member_remove
+  AFTER DELETE ON public.circle_members
+  FOR EACH ROW EXECUTE FUNCTION public.handle_circle_member_remove();
+
+-- C. Trigger for file uploads to notify subscribers
+CREATE OR REPLACE FUNCTION public.handle_file_uploaded()
+RETURNS TRIGGER AS $$
+DECLARE
+  sub RECORD;
+  circle_name TEXT;
+  uploader_name TEXT;
+BEGIN
+  -- Get circle name
+  SELECT name INTO circle_name FROM public.circles WHERE id = NEW.circle_id;
+  -- Get uploader name
+  SELECT full_name INTO uploader_name FROM public.profiles WHERE id = NEW.uploaded_by;
+
+  -- Find all users subscribed to 'file_uploaded' for this circle
+  FOR sub IN 
+    SELECT user_id, filter FROM public.notification_subscriptions
+    WHERE circle_id = NEW.circle_id AND event_type = 'file_uploaded'
+  LOOP
+    -- Check filter. If filter is empty/null, notify.
+    -- If filter has uploader_ids, check if NEW.uploaded_by is in uploader_ids.
+    IF sub.user_id != NEW.uploaded_by THEN -- Don't notify the uploader themselves!
+      IF sub.filter IS NULL 
+         OR NOT (sub.filter ? 'uploader_ids') 
+         OR jsonb_array_length(sub.filter->'uploader_ids') = 0
+         OR (sub.filter->'uploader_ids') ? (NEW.uploaded_by::text) 
+      THEN
+        INSERT INTO public.notifications (user_id, circle_id, type, title, body, metadata)
+        VALUES (
+          sub.user_id,
+          NEW.circle_id,
+          'file_uploaded',
+          'New File Uploaded',
+          coalesce(uploader_name, 'A member') || ' uploaded "' || NEW.name || '" in ' || coalesce(circle_name, 'the circle') || '.',
+          jsonb_build_object('file_id', NEW.id, 'folder_id', NEW.folder_id, 'circle_id', NEW.circle_id, 'circle_name', circle_name)
+        );
+      END IF;
+    END IF;
+  END LOOP;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_file_uploaded ON public.files;
+CREATE TRIGGER on_file_uploaded
+  AFTER INSERT ON public.files
+  FOR EACH ROW EXECUTE FUNCTION public.handle_file_uploaded();
+
+-- D. Realtime replication setup for notifications and subscriptions
+alter publication supabase_realtime add table public.notifications;
+alter publication supabase_realtime add table public.notification_subscriptions;
+
+

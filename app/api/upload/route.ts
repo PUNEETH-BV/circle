@@ -12,17 +12,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
-    // Verify membership using admin client (avoids RLS recursion issues)
+    // Verify membership and upload permissions using admin client (avoids RLS recursion issues)
     const adminClient = createAdminClient();
     const { data: member } = await adminClient
       .from('circle_members')
-      .select('id')
+      .select('id, role, can_upload')
       .eq('circle_id', circleId)
       .eq('user_id', user.id)
       .single();
 
     if (!member) {
       return NextResponse.json({ error: 'Not a member of this circle' }, { status: 403 });
+    }
+
+    if (member.role !== 'admin' && member.can_upload === false) {
+      return NextResponse.json({ error: 'Uploads have been restricted for your account by an administrator' }, { status: 403 });
     }
 
     let filePath = `${circleId}/${user.id}/${Date.now()}-${fileName}`;

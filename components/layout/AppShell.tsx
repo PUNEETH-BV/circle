@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { MobileDrawer } from './MobileDrawer';
@@ -15,6 +17,29 @@ interface AppShellProps {
 
 export function AppShell({ profile, circles, children, userEmail }: AppShellProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const router = useRouter();
+  const supabase = createClient();
+
+  useEffect(() => {
+    if (!profile?.id) return;
+
+    // Listen to membership changes (joined or removed) to refresh the sidebar
+    const channel = supabase
+      .channel(`member-refresh-${profile.id}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'circle_members',
+        filter: `user_id=eq.${profile.id}`,
+      }, () => {
+        router.refresh();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [profile?.id, router, supabase]);
 
   return (
     <div className="min-h-screen bg-surface">

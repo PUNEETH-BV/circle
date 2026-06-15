@@ -35,7 +35,7 @@ export default function FilesPage() {
     updateFolder
   } = useFolders(circleId);
 
-  const { userRole } = useCircle(circleId);
+  const { userRole, canUpload } = useCircle(circleId);
   const isAdmin = userRole === 'admin';
 
   const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
@@ -303,7 +303,12 @@ export default function FilesPage() {
               </select>
             </div>
 
-            <Button onClick={() => setCreateModalOpen(true)} className="gap-1.5 h-10 flex-shrink-0 bg-indigo-600 hover:bg-indigo-700">
+            <Button 
+              onClick={() => setCreateModalOpen(true)} 
+              className="gap-1.5 h-10 flex-shrink-0 bg-indigo-600 hover:bg-indigo-700"
+              disabled={!canUpload && !isAdmin}
+              title={(!canUpload && !isAdmin) ? "Upload restricted by administrator" : undefined}
+            >
               <FolderPlus className="w-4 h-4" />
               <span>New Folder</span>
             </Button>

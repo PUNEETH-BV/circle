@@ -104,11 +104,50 @@ export function useMembers(circleId: string) {
     }
   }
 
+  async function updateUploadPermission(memberId: string, canUpload: boolean) {
+    try {
+      const { error } = await supabase
+        .from('circle_members')
+        .update({ can_upload: canUpload })
+        .eq('id', memberId);
+
+      if (error) throw error;
+
+      toast.success(canUpload ? 'Allowed uploads for this member' : 'Restricted uploads for this member');
+      setMembers(prev =>
+        prev.map(m => (m.id === memberId ? { ...m, can_upload: canUpload } : m))
+      );
+    } catch (err: any) {
+      toast.error('Failed to update upload permission: ' + err.message);
+    }
+  }
+
+  async function updateAllUploadPermissions(canUpload: boolean) {
+    try {
+      const { error } = await supabase
+        .from('circle_members')
+        .update({ can_upload: canUpload })
+        .eq('circle_id', circleId)
+        .eq('role', 'member'); // only toggle non-admins
+
+      if (error) throw error;
+
+      toast.success(canUpload ? 'Allowed uploads for all members' : 'Restricted uploads for all members');
+      setMembers(prev =>
+        prev.map(m => (m.role === 'member' ? { ...m, can_upload: canUpload } : m))
+      );
+    } catch (err: any) {
+      toast.error('Failed to update bulk permissions: ' + err.message);
+    }
+  }
+
   return {
     members,
     loading,
     updateMemberRole,
     removeMember,
+    updateUploadPermission,
+    updateAllUploadPermissions,
     leaveCircle,
     refreshMembers: fetchMembers,
   };

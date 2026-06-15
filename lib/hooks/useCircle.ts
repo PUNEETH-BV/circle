@@ -10,6 +10,7 @@ export function useCircle(circleId: string) {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<'admin' | 'member'>('member');
+  const [canUpload, setCanUpload] = useState<boolean>(true);
 
   useEffect(() => {
     fetchCircle();
@@ -58,11 +59,14 @@ export function useCircle(circleId: string) {
     if (!user) return;
     const { data } = await supabase
       .from('circle_members')
-      .select('role')
+      .select('role, can_upload')
       .eq('circle_id', circleId)
       .eq('user_id', user.id)
       .single();
-    if (data) setUserRole(data.role as 'admin' | 'member');
+    if (data) {
+      setUserRole(data.role as 'admin' | 'member');
+      setCanUpload(data.can_upload !== false);
+    }
   }
 
   async function createAnnouncement(title: string, body: string) {
@@ -79,5 +83,5 @@ export function useCircle(circleId: string) {
     if (error) throw error;
   }
 
-  return { circle, announcements, loading, userRole, createAnnouncement, refreshCircle: fetchCircle };
+  return { circle, announcements, loading, userRole, canUpload, createAnnouncement, refreshCircle: fetchCircle };
 }

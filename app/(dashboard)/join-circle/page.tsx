@@ -29,35 +29,48 @@ function JoinCircleContent() {
 
     setLoading(true);
     try {
-      const response = await fetch('/api/join', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ inviteCode: code.trim() }),
+      const response = await fetch(`/api/join?code=${encodeURIComponent(code.trim())}`, {
+        method: 'GET',
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        // Handle pre-existing pending requests or already joined status gracefully
-        if (data.status === 'requested') {
-          setCircleName(data.circleName || 'Private Circle');
-          setStep('request_pending');
-          return;
-        }
-        if (data.status === 'joined') {
-          toast.success("You're already in this circle!");
-          window.location.href = `/circle/${data.circleId}`;
-          return;
-        }
-        throw new Error(data.error || 'Failed to join circle');
+        throw new Error(data.error || 'Failed to check invite code');
       }
 
-      if (data.status === 'requested') {
-        setCircleName(data.circleName);
+      if (data.status === 'joined') {
+        toast.success("You're already in this circle!");
+        window.location.href = `/circle/${data.circle.id}`;
+        return;
+      }
+
+      if (data.status === 'pending' || data.status === 'rejected') {
+        setCircleName(data.circle.name || 'Private Circle');
+        setStep('request_pending');
+        return;
+      }
+
+      if (data.circle.is_private) {
+        setCircleName(data.circle.name);
         setStep('send_request');
       } else {
-        toast.success(`Welcome to ${data.circleName}!`);
-        window.location.href = `/circle/${data.circleId}`;
+        // Public — join immediately
+        setLoading(true);
+        const joinResponse = await fetch('/api/join', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ inviteCode: code.trim() }),
+        });
+
+        const joinData = await joinResponse.json();
+
+        if (!joinResponse.ok) {
+          throw new Error(joinData.error || 'Failed to join circle');
+        }
+
+        toast.success(`Welcome to ${joinData.circleName}!`);
+        window.location.href = `/circle/${joinData.circleId}`;
       }
     } catch (error: any) {
       toast.error(error.message || 'Something went wrong');

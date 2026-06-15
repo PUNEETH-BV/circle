@@ -25,6 +25,8 @@ export default function MembersPage() {
     loading: loadingMembers,
     updateMemberRole,
     removeMember,
+    updateUploadPermission,
+    updateAllUploadPermissions,
     leaveCircle,
   } = useMembers(circleId);
 
@@ -92,11 +94,34 @@ export default function MembersPage() {
       {/* Members List Column */}
       <div className="lg:col-span-2 space-y-4">
         <div className="bg-white rounded-xl border border-slate-100 p-5 shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <h3 className="text-base font-semibold text-slate-900">Workspace Members</h3>
-            <span className="text-xs font-semibold text-slate-500 bg-slate-50 border border-slate-100 px-2.5 py-0.5 rounded-full">
-              {members.length} total
-            </span>
+            <div className="flex items-center justify-between sm:justify-end gap-3">
+              {isAdmin && (
+                <div className="flex items-center gap-1 border border-slate-100 bg-slate-50/50 p-1 rounded-lg">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-[10px] font-bold text-slate-600 hover:bg-white hover:text-indigo-600 transition-colors"
+                    onClick={() => updateAllUploadPermissions(true)}
+                  >
+                    Allow All Uploads
+                  </Button>
+                  <span className="w-px h-3.5 bg-slate-200" />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-[10px] font-bold text-slate-600 hover:bg-white hover:text-red-600 transition-colors"
+                    onClick={() => updateAllUploadPermissions(false)}
+                  >
+                    Restrict All Uploads
+                  </Button>
+                </div>
+              )}
+              <span className="text-xs font-semibold text-slate-500 bg-slate-50 border border-slate-100 px-2.5 py-0.5 rounded-full">
+                {members.length} total
+              </span>
+            </div>
           </div>
 
           <div className="relative">
@@ -153,7 +178,23 @@ export default function MembersPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
+                      {/* Upload permission toggle (admin only, for standard members) */}
+                      {isAdmin && member.role === 'member' && (
+                        <div className="flex items-center gap-1.5 mr-2">
+                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider select-none">
+                            Upload
+                          </label>
+                          <input
+                            type="checkbox"
+                            checked={member.can_upload !== false}
+                            onChange={(e) => updateUploadPermission(member.id, e.target.checked)}
+                            className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4 cursor-pointer"
+                            title="Toggle upload rights"
+                          />
+                        </div>
+                      )}
+
                       {/* Role Badge / Changer */}
                       {isAdmin && !isSelf ? (
                         <select
