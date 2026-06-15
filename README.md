@@ -102,4 +102,4 @@ The database is built on PostgreSQL with Row Level Security (RLS) enabled for al
 ## 🔗 Links
 
 - **Repository**: [https://github.com/PUNEETH-BV/circle](https://github.com/PUNEETH-BV/circle)
-- **Deployment**: *(Vercel deployment link coming soon!)*
+- **Deployment**: *https://circle-blond-xi.vercel.app/*
