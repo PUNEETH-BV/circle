@@ -26,11 +26,14 @@ import {
   Sparkles,
   X,
   RefreshCw,
-  FileText
+  FileText,
+  Clock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { useParams } from 'next/navigation';
+import { useNoteVersions, NoteVersion } from '@/lib/hooks/useNoteVersions';
 
 interface NoteEditorProps {
   initialTitle: string;
@@ -45,15 +48,23 @@ export function NoteEditor({
   onSave,
   onBack,
 }: NoteEditorProps) {
+  const params = useParams();
+  const noteId = params.noteId as string;
+
   const [title, setTitle] = useState(initialTitle);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'dirty' | 'error'>('saved');
   const [lastSavedTime, setLastSavedTime] = useState<Date | null>(null);
 
+  // Unified Sidebar Tab State: 'ai' | 'history' | null
+  const [activeSidebarTab, setActiveSidebarTab] = useState<'ai' | 'history' | null>(null);
+
   // AI Summary Drawer State
-  const [showAiPanel, setShowAiPanel] = useState(false);
   const [aiSummary, setAiSummary] = useState<string>('');
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+
+  // Note revisions hook
+  const { versions, loading: loadingVersions, saveVersion } = useNoteVersions(noteId);
 
   // References to keep track of current states for debouncing and unmount-saving
   const titleRef = useRef(title);
@@ -149,6 +160,9 @@ export function NoteEditor({
       await onSaveRef.current(titleRef.current, contentRef.current);
       setSaveStatus('saved');
       setLastSavedTime(new Date());
+
+      // Save a revision snapshot version in the database
+      await saveVersion(titleRef.current, contentRef.current);
     } catch (err) {
       console.error(err);
       setSaveStatus('error');
@@ -171,7 +185,7 @@ export function NoteEditor({
     setAiLoading(true);
     setAiError(null);
     setAiSummary('');
-    setShowAiPanel(true);
+    setActiveSidebarTab('ai');
 
     try {
       const response = await fetch('/api/ai', {
@@ -199,6 +213,18 @@ export function NoteEditor({
     } finally {
       setAiLoading(false);
     }
+  };
+
+  const handleRestoreVersion = (ver: NoteVersion) => {
+    const confirm = window.confirm("Are you sure you want to restore the note to this version? Unsaved changes in your current editor will be overwritten.");
+    if (!confirm) return;
+
+    setTitle(ver.title);
+    if (editor) {
+      editor.commands.setContent(ver.content);
+    }
+    setSaveStatus('dirty');
+    toast.success('Note content restored! Auto-save will backup this state.');
   };
 
   if (!editor) {
@@ -229,7 +255,7 @@ export function NoteEditor({
     <div className="flex h-full bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
       
       {/* Left side: Note Editor */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden border-r border-slate-150">
+      <div className="flex-1 flex flex-col h-full overflow-hidden border-r border-slate-100">
         
         {/* Top Navbar */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-white flex-shrink-0">
@@ -240,7 +266,7 @@ export function NoteEditor({
             <div className="flex items-center gap-2 text-xs">
               {saveStatus === 'saved' && (
                 <span className="flex items-center gap-1 text-slate-500 font-semibold">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500 animate-bounce" />
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                   {lastSavedTime ? `Saved at ${formatTime(lastSavedTime)}` : 'Saved'}
                 </span>
               )}
@@ -266,11 +292,28 @@ export function NoteEditor({
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Version History Toggle */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setActiveSidebarTab(prev => prev === 'history' ? null : 'history')}
+              className="border-slate-200 gap-1.5 h-8 text-xs rounded-lg font-semibold text-slate-600 hover:bg-slate-50"
+            >
+              <Clock className="w-3.5 h-3.5 text-slate-400" />
+              <span>History</span>
+            </Button>
+
             {/* AI Assistant Button */}
             <Button
               variant="outline"
               size="sm"
-              onClick={handleGenerateSummary}
+              onClick={() => {
+                if (activeSidebarTab === 'ai') {
+                  setActiveSidebarTab(null);
+                } else {
+                  handleGenerateSummary();
+                }
+              }}
               disabled={aiLoading}
               className="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 hover:text-indigo-700 border-indigo-150 gap-1.5 h-8 text-xs rounded-lg font-bold"
             >
@@ -399,7 +442,7 @@ export function NoteEditor({
             value={title}
             onChange={handleTitleChange}
             placeholder="Untitled Note"
-            className="w-full bg-transparent border-0 border-b border-transparent hover:border-slate-100 focus:border-slate-100 text-3xl font-bold text-slate-900 placeholder:text-slate-200 outline-none pb-2 mb-6 transition-all"
+            className="w-full bg-transparent border-0 border-b border-transparent hover:border-slate-150 focus:border-slate-150 text-3xl font-bold text-slate-900 placeholder:text-slate-200 outline-none pb-2 mb-6 transition-all"
           />
 
           {/* Editor Body */}
@@ -407,19 +450,19 @@ export function NoteEditor({
         </div>
       </div>
 
-      {/* Right side: AI Summary Drawer */}
-      {showAiPanel && (
+      {/* Right side: Sidebar drawers */}
+      {activeSidebarTab === 'ai' && (
         <div className="w-80 bg-slate-50 flex flex-col h-full overflow-hidden animate-slideIn select-none border-l border-slate-100">
           
           {/* AI Header */}
           <div className="p-4 border-b border-slate-200/60 bg-white flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <Sparkles className="w-4 h-4 text-indigo-500 fill-indigo-500/10" />
-              <h3 className="text-xs font-bold text-slate-950">Gemini AI Assistant</h3>
+              <h3 className="text-xs font-bold text-slate-955">Gemini AI Assistant</h3>
             </div>
             <button
-              onClick={() => setShowAiPanel(false)}
-              className="text-slate-400 hover:text-slate-600 p-1 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+              onClick={() => setActiveSidebarTab(null)}
+              className="text-slate-400 hover:text-slate-605 p-1 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -428,7 +471,7 @@ export function NoteEditor({
           {/* AI Content Area */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {aiLoading ? (
-              <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-2">
+              <div className="flex flex-col items-center justify-center py-20 text-slate-450 gap-2">
                 <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
                 <span className="text-xs font-medium">Analyzing document...</span>
               </div>
@@ -464,11 +507,71 @@ export function NoteEditor({
                   onClick={handleGenerateSummary}
                   variant="outline"
                   size="sm"
-                  className="w-full border-slate-200 text-slate-600 gap-1.5 text-xs rounded-lg"
+                  className="w-full border-slate-200 text-slate-650 gap-1.5 text-xs rounded-lg animate-pulse"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
                   Refresh Summary
                 </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {activeSidebarTab === 'history' && (
+        <div className="w-80 bg-slate-50 flex flex-col h-full overflow-hidden animate-slideIn select-none border-l border-slate-100">
+          
+          {/* History Header */}
+          <div className="p-4 border-b border-slate-200/60 bg-white flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Clock className="w-4 h-4 text-indigo-500" />
+              <h3 className="text-xs font-bold text-slate-955">Revision History</h3>
+            </div>
+            <button
+              onClick={() => setActiveSidebarTab(null)}
+              className="text-slate-400 hover:text-slate-605 p-1 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* History Content Area */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            <div className="bg-indigo-50/50 rounded-xl p-3 border border-indigo-100/50 text-[10px] text-indigo-700 leading-normal font-medium">
+              💡 Saving edits or clicking "Save Now" automatically takes a revision snapshot. Click any card below to restore.
+            </div>
+
+            {loadingVersions ? (
+              <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-2">
+                <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
+                <span className="text-xs font-semibold">Loading revisions...</span>
+              </div>
+            ) : versions.length === 0 ? (
+              <p className="text-[10px] text-slate-450 text-center py-10 italic">No revisions backup yet.</p>
+            ) : (
+              <div className="space-y-2 select-text">
+                {versions.map((ver, idx) => (
+                  <button
+                    key={ver.id}
+                    onClick={() => handleRestoreVersion(ver)}
+                    className="w-full text-left p-3.5 bg-white hover:bg-indigo-50/30 rounded-xl border border-slate-100 hover:border-indigo-100/80 transition-all group flex flex-col gap-1 cursor-pointer"
+                  >
+                    <div className="flex items-center justify-between select-none">
+                      <span className="text-xs font-bold text-slate-800 group-hover:text-indigo-600 transition-colors truncate max-w-[130px]">
+                        {ver.title || 'Untitled Note'}
+                      </span>
+                      <span className="text-[9px] bg-slate-100 text-slate-500 font-bold px-1.5 py-0.5 rounded shrink-0">
+                        v{versions.length - idx}
+                      </span>
+                    </div>
+                    <p className="text-[9px] text-slate-400 font-medium">
+                      Updated by {ver.author?.full_name || 'Member'}
+                    </p>
+                    <span className="text-[8px] text-slate-400 font-semibold mt-1">
+                      {new Date(ver.created_at).toLocaleString()}
+                    </span>
+                  </button>
+                ))}
               </div>
             )}
           </div>

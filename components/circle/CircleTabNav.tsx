@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, FolderOpen, FileText, Users, Settings, Inbox } from 'lucide-react';
+import { Home, FolderOpen, FileText, Users, Settings, Inbox, MessageSquare, CheckSquare, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
 import { Badge } from '@/components/ui/badge';
@@ -57,6 +57,9 @@ export function CircleTabNav({ circleId, circleName, isAdmin }: CircleTabNavProp
 
   const tabs = [
     { label: 'Home', href: basePath, icon: Home, exact: true },
+    { label: 'Chat', href: `${basePath}/chat`, icon: MessageSquare },
+    { label: 'Tasks', href: `${basePath}/tasks`, icon: CheckSquare },
+    { label: 'Events', href: `${basePath}/events`, icon: Calendar },
     { label: 'Files', href: `${basePath}/files`, icon: FolderOpen },
     { label: 'Notes', href: `${basePath}/notes`, icon: FileText },
     { label: 'Members', href: `${basePath}/members`, icon: Users },

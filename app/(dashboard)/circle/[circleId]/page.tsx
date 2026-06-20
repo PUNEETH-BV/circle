@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useCircle } from '@/lib/hooks/useCircle';
-import { Copy, Check, Megaphone, Plus, Activity, Paperclip, X, Film, Loader2, Sparkles, FileText, FolderOpen } from 'lucide-react';
+import { Copy, Check, Megaphone, Plus, Activity, Paperclip, X, Film, Loader2, Sparkles, FileText, FolderOpen, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
+import { AnnouncementComments } from '@/components/circle/AnnouncementComments';
 
 export default function CircleHomePage({ params }: { params: { circleId: string } }) {
   const { circleId } = params;
@@ -39,6 +40,9 @@ export default function CircleHomePage({ params }: { params: { circleId: string 
   const [mediaFiles, setMediaFiles] = useState<File[]>([]);
   const [posting, setPosting] = useState(false);
   const [enhancing, setEnhancing] = useState(false);
+  
+  // Announcement Comments expanded state
+  const [expandedComments, setExpandedComments] = useState<Record<string, boolean>>({});
   const supabase = createClient();
 
   const copyInviteCode = () => {
@@ -409,7 +413,24 @@ export default function CircleHomePage({ params }: { params: { circleId: string 
                             </button>
                           );
                         })}
+
+                        {/* Comments Toggle Button */}
+                        <button
+                          onClick={() => setExpandedComments(prev => ({ ...prev, [a.id]: !prev[a.id] }))}
+                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold border border-slate-150 hover:bg-slate-50 text-slate-500 hover:text-slate-700 ml-auto cursor-pointer"
+                        >
+                          <MessageSquare className="w-3.5 h-3.5 text-slate-400" />
+                          <span>Comments</span>
+                        </button>
                       </div>
+
+                      {/* Announcement Comments Thread */}
+                      {expandedComments[a.id] && (
+                        <AnnouncementComments 
+                          announcementId={a.id} 
+                          currentUserId={currentUserId} 
+                        />
+                      )}
 
                     </div>
                   </div>
