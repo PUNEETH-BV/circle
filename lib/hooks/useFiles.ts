@@ -74,8 +74,8 @@ export function useFiles(circleId: string, folderId?: string) {
   }
 
   async function uploadFile(file: File, description?: string, categoryId?: string) {
-    if (file.size > 50 * 1024 * 1024) {
-      toast.error('File exceeds 50MB size limit.');
+    if (file.size > 100 * 1024 * 1024) {
+      toast.error('File exceeds 100MB size limit.');
       return;
     }
 

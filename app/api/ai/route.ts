@@ -4,21 +4,11 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 export async function POST(request: NextRequest) {
   try {
     const apiKey = process.env.GEMINI_API_KEY;
-
-    if (!apiKey) {
-      return NextResponse.json({ 
-        error: 'Gemini API Key is missing. Please set GEMINI_API_KEY in your .env.local file to enable AI features.' 
-      }, { status: 400 });
-    }
-
     const { action, text, tone } = await request.json();
 
     if (!text || !text.trim()) {
       return NextResponse.json({ error: 'Text content is required' }, { status: 400 });
     }
-
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
     let prompt = '';
 
@@ -51,12 +41,49 @@ Draft announcement text:
       return NextResponse.json({ error: 'Invalid AI action requested' }, { status: 400 });
     }
 
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
+    let responseText = '';
+
+    if (apiKey) {
+      try {
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const result = await model.generateContent(prompt);
+        responseText = result.response.text();
+      } catch (err: any) {
+        console.warn('Gemini API call failed, using mock fallback:', err.message);
+        responseText = getMockFallback(action, text, tone);
+      }
+    } else {
+      console.warn('Gemini API key missing, using mock fallback.');
+      responseText = getMockFallback(action, text, tone);
+    }
 
     return NextResponse.json({ result: responseText });
   } catch (error: any) {
     console.error('AI API Route Error:', error);
-    return NextResponse.json({ error: error.message || 'Failed to communicate with AI model' }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Failed to process AI action' }, { status: 500 });
+  }
+}
+
+function getMockFallback(action: string, text: string, tone?: string) {
+  if (action === 'summarize') {
+    const sentences = text
+      .replace(/<[^>]*>/g, '') // strip simple HTML tags
+      .split(/[.!?]+/)
+      .map(s => s.trim())
+      .filter(Boolean);
+
+    const overview = sentences.slice(0, 2).join('. ') + (sentences.length > 2 ? '.' : '');
+    const points = sentences.slice(2, 6).map(s => `- ${s}`).join('\n');
+
+    return `✨ [AI Fallback Summary]\n\n${overview || 'A brief collaborative document note.'}\n\nKey Takeaways:\n${points || '- Review document details inside the workspace.\n- Make edits and save versions.'}\n\n*Note: Gemini API is currently offline or unconfigured, resilient fallback summary shown.*`;
+  } else {
+    const emojiMap: Record<string, string> = {
+      inspiring: '🚀✨',
+      casual: '👋😊',
+      professional: '👔📋',
+    };
+    const emoji = emojiMap[tone || 'professional'] || '📢';
+    return `${emoji} [AI Refined Post - ${tone || 'Professional'}]\n\n${text}\n\n*Note: Gemini API is currently offline or unconfigured, fallback styling applied.*`;
   }
 }

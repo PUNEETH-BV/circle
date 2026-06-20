@@ -157,8 +157,8 @@ export function useFolders(circleId: string) {
     if (!user) throw new Error('Not authenticated');
 
     for (const file of filesList) {
-      if (file.size > 50 * 1024 * 1024) {
-        toast.error(`File "${file.name}" exceeds 50MB size limit and was skipped.`);
+      if (file.size > 100 * 1024 * 1024) {
+        toast.error(`File "${file.name}" exceeds 100MB size limit and was skipped.`);
         continue;
       }
 

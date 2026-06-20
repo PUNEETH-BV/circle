@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { UserAvatar } from '@/components/shared/UserAvatar';
 import { SkeletonCard } from '@/components/shared/SkeletonCard';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -30,7 +31,8 @@ export default function CircleHomePage({ params }: { params: { circleId: string 
     loadingActivities,
     currentUserId,
     createAnnouncement, 
-    toggleReaction 
+    toggleReaction,
+    voteInPoll
   } = useCircle(circleId);
 
   const [copied, setCopied] = useState(false);
@@ -40,6 +42,11 @@ export default function CircleHomePage({ params }: { params: { circleId: string 
   const [mediaFiles, setMediaFiles] = useState<File[]>([]);
   const [posting, setPosting] = useState(false);
   const [enhancing, setEnhancing] = useState(false);
+  
+  // Poll States
+  const [showPollForm, setShowPollForm] = useState(false);
+  const [pollQuestion, setPollQuestion] = useState('');
+  const [pollOptions, setPollOptions] = useState(['', '']);
   
   // Announcement Comments expanded state
   const [expandedComments, setExpandedComments] = useState<Record<string, boolean>>({});
@@ -86,15 +93,31 @@ export default function CircleHomePage({ params }: { params: { circleId: string 
         });
       }
 
+      let formattedPollOptions: any[] = [];
+      if (showPollForm && pollQuestion.trim() && pollOptions.filter(o => o.trim()).length > 1) {
+        formattedPollOptions = pollOptions
+          .filter(o => o.trim())
+          .map((opt, idx) => ({
+            id: `opt-${idx}-${Date.now()}`,
+            text: opt.trim(),
+            votes: []
+          }));
+      }
+
       await createAnnouncement(
         announcementTitle.trim(),
         announcementBody.trim(),
-        uploadedMedia
+        uploadedMedia,
+        showPollForm && pollQuestion.trim() ? pollQuestion.trim() : undefined,
+        formattedPollOptions.length > 0 ? formattedPollOptions : undefined
       );
 
       setAnnouncementTitle('');
       setAnnouncementBody('');
       setMediaFiles([]);
+      setShowPollForm(false);
+      setPollQuestion('');
+      setPollOptions(['', '']);
       setShowAnnouncementForm(false);
       toast.success('Announcement posted!');
     } catch (err: any) {
@@ -274,6 +297,76 @@ export default function CircleHomePage({ params }: { params: { circleId: string 
                 </div>
               )}
 
+              {/* Poll Builder Toggle */}
+              <div className="pt-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowPollForm(!showPollForm)}
+                  disabled={posting || enhancing}
+                  className={cn(
+                    "text-slate-500 hover:text-indigo-600 gap-1.5 h-8 text-xs rounded-lg border-slate-200",
+                    showPollForm && "bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100"
+                  )}
+                >
+                  <span>{showPollForm ? 'Remove Poll' : '📊 Add a Quick Poll'}</span>
+                </Button>
+              </div>
+
+              {/* Poll Builder Form */}
+              {showPollForm && (
+                <div className="p-4 bg-slate-50 border border-slate-150 rounded-xl space-y-3 animate-fadeIn">
+                  <div className="space-y-1">
+                    <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Poll Question</Label>
+                    <Input
+                      placeholder="e.g. Which date works best for the project meet?"
+                      value={pollQuestion}
+                      onChange={(e) => setPollQuestion(e.target.value)}
+                      disabled={posting || enhancing}
+                      className="text-xs h-9 bg-white border-slate-200"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Poll Options</Label>
+                    {pollOptions.map((opt, idx) => (
+                      <div key={idx} className="flex gap-2 items-center">
+                        <Input
+                          placeholder={`Option ${idx + 1}`}
+                          value={opt}
+                          onChange={(e) => {
+                            const newOpts = [...pollOptions];
+                            newOpts[idx] = e.target.value;
+                            setPollOptions(newOpts);
+                          }}
+                          disabled={posting || enhancing}
+                          className="text-xs h-8 bg-white border-slate-200"
+                        />
+                        {pollOptions.length > 2 && (
+                          <button
+                            type="button"
+                            onClick={() => setPollOptions(prev => prev.filter((_, i) => i !== idx))}
+                            className="p-1 hover:bg-slate-250 rounded text-slate-400 hover:text-red-500 cursor-pointer"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    {pollOptions.length < 6 && (
+                      <button
+                        type="button"
+                        onClick={() => setPollOptions(prev => [...prev, ''])}
+                        className="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-1 mt-1 cursor-pointer"
+                      >
+                        <Plus className="w-3 h-3" />
+                        <span>Add Option</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-slate-50">
                 <div>
                   <input
@@ -389,6 +482,59 @@ export default function CircleHomePage({ params }: { params: { circleId: string 
                               )}
                             </div>
                           ))}
+                        </div>
+                      )}
+
+                      {/* Announcement Poll Widget */}
+                      {a.poll_question && a.poll_options && (
+                        <div className="p-4 mt-4 bg-slate-50/50 border border-slate-100 rounded-xl space-y-3 select-none">
+                          <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
+                            <span className="p-1 rounded bg-indigo-50 text-indigo-600">📊</span>
+                            <span>{a.poll_question}</span>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            {(() => {
+                              const totalVotes = a.poll_options.reduce((sum, opt) => sum + (opt.votes?.length || 0), 0);
+                              return a.poll_options.map((opt) => {
+                                const hasVotedThis = currentUserId ? (opt.votes || []).includes(currentUserId) : false;
+                                const voteCount = opt.votes?.length || 0;
+                                const pct = totalVotes > 0 ? Math.round((voteCount / totalVotes) * 100) : 0;
+                                return (
+                                  <button
+                                    key={opt.id}
+                                    onClick={() => voteInPoll(a.id, opt.id)}
+                                    className={cn(
+                                      "w-full text-left relative overflow-hidden h-9 px-3 border rounded-xl flex items-center justify-between transition-all active:scale-[0.99] cursor-pointer",
+                                      hasVotedThis
+                                        ? "bg-indigo-50/50 border-indigo-200 text-indigo-700 font-extrabold shadow-sm"
+                                        : "bg-white border-slate-100 hover:bg-slate-50 text-slate-700 hover:text-slate-900"
+                                    )}
+                                  >
+                                    {/* Progress background bar overlay */}
+                                    <div 
+                                      className={cn(
+                                        "absolute left-0 top-0 bottom-0 transition-all duration-500 pointer-events-none opacity-[0.08]",
+                                        hasVotedThis ? "bg-indigo-600" : "bg-slate-500"
+                                      )}
+                                      style={{ width: `${pct}%` }}
+                                    />
+                                    <span className="relative z-10 text-xs font-semibold truncate max-w-[80%]">{opt.text}</span>
+                                    <span className="relative z-10 text-[10px] font-bold text-slate-500">
+                                      {pct}% ({voteCount})
+                                    </span>
+                                  </button>
+                                );
+                              });
+                            })()}
+                          </div>
+
+                          <div className="flex justify-between items-center text-[9px] text-slate-400 font-bold px-0.5">
+                            <span>Single choice poll</span>
+                            <span>
+                              Total votes: {a.poll_options.reduce((sum, opt) => sum + (opt.votes?.length || 0), 0)}
+                            </span>
+                          </div>
                         </div>
                       )}
 

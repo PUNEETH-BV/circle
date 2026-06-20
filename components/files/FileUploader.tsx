@@ -52,8 +52,8 @@ export function FileUploader({
 
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const droppedFile = e.dataTransfer.files[0];
-      if (droppedFile.size > 50 * 1024 * 1024) {
-        toast.error('File exceeds 50MB size limit');
+      if (droppedFile.size > 100 * 1024 * 1024) {
+        toast.error('File exceeds 100MB size limit');
         return;
       }
       setFile(droppedFile);
@@ -63,8 +63,8 @@ export function FileUploader({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
-      if (selectedFile.size > 50 * 1024 * 1024) {
-        toast.error('File exceeds 50MB size limit');
+      if (selectedFile.size > 100 * 1024 * 1024) {
+        toast.error('File exceeds 100MB size limit');
         return;
       }
       setFile(selectedFile);

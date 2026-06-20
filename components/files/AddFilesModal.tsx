@@ -56,8 +56,8 @@ export function AddFilesModal({
     const newFiles: UploadingFile[] = [];
     for (let i = 0; i < filesList.length; i++) {
       const file = filesList[i];
-      if (file.size > 50 * 1024 * 1024) {
-        toast.error(`"${file.name}" exceeds the 50MB limit and was skipped.`);
+      if (file.size > 100 * 1024 * 1024) {
+        toast.error(`"${file.name}" exceeds the 100MB limit and was skipped.`);
         continue;
       }
       if (filesToUpload.some(f => f.file.name === file.name && f.file.size === file.size)) {

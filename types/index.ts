@@ -76,6 +76,8 @@ export interface Announcement {
   body: string;
   media?: { url: string; type: 'image' | 'video' }[];
   reactions?: Record<string, string[]>;
+  poll_question?: string | null;
+  poll_options?: { id: string; text: string; votes: string[] }[];
   created_at: string;
   author?: Profile;
 }

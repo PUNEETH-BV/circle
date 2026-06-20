@@ -52,7 +52,12 @@ export function useCircle(circleId: string) {
       }, (payload) => {
         const updated = payload.new as Announcement;
         setAnnouncements(prev => 
-          prev.map(a => a.id === updated.id ? { ...a, reactions: updated.reactions } : a)
+          prev.map(a => a.id === updated.id ? { 
+            ...a, 
+            reactions: updated.reactions,
+            poll_question: updated.poll_question,
+            poll_options: updated.poll_options
+          } : a)
         );
       })
       .subscribe();
@@ -140,7 +145,13 @@ export function useCircle(circleId: string) {
     }
   }
 
-  async function createAnnouncement(title: string, body: string, media?: { url: string; type: 'image' | 'video' }[]) {
+  async function createAnnouncement(
+    title: string, 
+    body: string, 
+    media?: { url: string; type: 'image' | 'video' }[],
+    pollQuestion?: string,
+    pollOptions?: { id: string; text: string; votes: string[] }[]
+  ) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const { error } = await supabase
@@ -151,6 +162,8 @@ export function useCircle(circleId: string) {
         title,
         body,
         media: media || [],
+        poll_question: pollQuestion || null,
+        poll_options: pollOptions || []
       });
     if (error) throw error;
   }
@@ -201,6 +214,70 @@ export function useCircle(circleId: string) {
     }
   }
 
+  async function voteInPoll(announcementId: string, optionId: string) {
+    if (!currentUserId) return;
+
+    // Optimistic Update
+    setAnnouncements(prev => 
+      prev.map(a => {
+        if (a.id === announcementId && a.poll_options) {
+          const updatedOptions = a.poll_options.map(opt => {
+            let votes = [...(opt.votes || [])];
+            const userAlreadyVoted = votes.includes(currentUserId);
+            if (opt.id === optionId) {
+              if (userAlreadyVoted) {
+                votes = votes.filter(uid => uid !== currentUserId);
+              } else {
+                votes.push(currentUserId);
+              }
+            } else {
+              votes = votes.filter(uid => uid !== currentUserId);
+            }
+            return { ...opt, votes };
+          });
+          return { ...a, poll_options: updatedOptions };
+        }
+        return a;
+      })
+    );
+
+    try {
+      // Fetch latest options from DB
+      const { data, error: fetchErr } = await supabase
+        .from('announcements')
+        .select('poll_options')
+        .eq('id', announcementId)
+        .single();
+
+      if (fetchErr) throw fetchErr;
+
+      const currentOptions: any[] = data.poll_options || [];
+      const updatedOptions = currentOptions.map(opt => {
+        let votes = [...(opt.votes || [])];
+        if (opt.id === optionId) {
+          if (votes.includes(currentUserId)) {
+            votes = votes.filter(uid => uid !== currentUserId);
+          } else {
+            votes.push(currentUserId);
+          }
+        } else {
+          votes = votes.filter(uid => uid !== currentUserId);
+        }
+        return { ...opt, votes };
+      });
+
+      const { error: updateErr } = await supabase
+        .from('announcements')
+        .update({ poll_options: updatedOptions })
+        .eq('id', announcementId);
+
+      if (updateErr) throw updateErr;
+    } catch (err: any) {
+      console.error('Failed to vote in poll:', err);
+      fetchAnnouncements();
+    }
+  }
+
   return { 
     circle, 
     announcements, 
@@ -212,6 +289,7 @@ export function useCircle(circleId: string) {
     currentUserId,
     createAnnouncement, 
     toggleReaction,
+    voteInPoll,
     refreshCircle: fetchCircle,
     refreshActivity: fetchRecentActivity
   };

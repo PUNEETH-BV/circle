@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Menu, Bell, Search, FileText, File, Loader2, X } from 'lucide-react';
+import { Menu, Bell, Search, FileText, File, Loader2, X, Megaphone, BookOpen } from 'lucide-react';
 import { UserAvatar } from '@/components/shared/UserAvatar';
 import { createClient } from '@/lib/supabase/client';
 import { getFileIcon } from '@/lib/utils/getFileIcon';
@@ -30,7 +30,12 @@ export function Topbar({ title, profile, email, onMenuClick }: TopbarProps) {
   const [query, setQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [searching, setSearching] = useState(false);
-  const [results, setResults] = useState<{ files: any[]; notes: any[] }>({ files: [], notes: [] });
+  const [results, setResults] = useState<{
+    files: any[];
+    notes: any[];
+    announcements: any[];
+    assignments: any[];
+  }>({ files: [], notes: [], announcements: [], assignments: [] });
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [panelOpen, setPanelOpen] = useState(false);
@@ -60,31 +65,49 @@ export function Topbar({ title, profile, email, onMenuClick }: TopbarProps) {
   // Debounced search query
   useEffect(() => {
     if (!query.trim() || !circleId) {
-      setResults({ files: [], notes: [] });
+      setResults({ files: [], notes: [], announcements: [], assignments: [] });
       return;
     }
 
     const delayDebounce = setTimeout(async () => {
       setSearching(true);
       try {
-        const [filesRes, notesRes] = await Promise.all([
+        const [filesRes, notesRes, announcementsRes, assignmentsRes] = await Promise.all([
           supabase
             .from('files')
             .select('*')
             .eq('circle_id', circleId)
             .ilike('name', `%${query}%`)
-            .limit(4),
+            .limit(3)
+            .then(res => res, () => ({ data: [] })),
           supabase
             .from('notes')
             .select('*')
             .eq('circle_id', circleId)
             .ilike('title', `%${query}%`)
-            .limit(4),
+            .limit(3)
+            .then(res => res, () => ({ data: [] })),
+          supabase
+            .from('announcements')
+            .select('*')
+            .eq('circle_id', circleId)
+            .ilike('title', `%${query}%`)
+            .limit(3)
+            .then(res => res, () => ({ data: [] })),
+          supabase
+            .from('assignments')
+            .select('*')
+            .eq('circle_id', circleId)
+            .ilike('title', `%${query}%`)
+            .limit(3)
+            .then(res => res, () => ({ data: [] })),
         ]);
 
         setResults({
           files: filesRes.data || [],
           notes: notesRes.data || [],
+          announcements: announcementsRes.data || [],
+          assignments: assignmentsRes.data || [],
         });
       } catch (err) {
         console.error('Search error:', err);
@@ -133,7 +156,7 @@ export function Topbar({ title, profile, email, onMenuClick }: TopbarProps) {
                 <button
                   onClick={() => {
                     setQuery('');
-                    setResults({ files: [], notes: [] });
+                    setResults({ files: [], notes: [], announcements: [], assignments: [] });
                   }}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-0.5 hover:bg-slate-100 rounded"
                 >
@@ -150,9 +173,9 @@ export function Topbar({ title, profile, email, onMenuClick }: TopbarProps) {
                     <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
                     <span className="font-medium">Searching...</span>
                   </div>
-                ) : results.files.length === 0 && results.notes.length === 0 ? (
+                ) : results.files.length === 0 && results.notes.length === 0 && results.announcements.length === 0 && results.assignments.length === 0 ? (
                   <div className="text-center py-6 text-slate-400 text-xs font-medium">
-                    No matching files or notes found.
+                    No matching items found.
                   </div>
                 ) : (
                   <>
@@ -168,15 +191,69 @@ export function Topbar({ title, profile, email, onMenuClick }: TopbarProps) {
                               key={note.id}
                               href={`/circle/${circleId}/notes/${note.id}`}
                               onClick={() => {
-                                setSearchOpen(false);
-                                setQuery('');
-                              }}
+                                  setSearchOpen(false);
+                                  setQuery('');
+                                }}
                               className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-indigo-50/50 transition-colors text-slate-700 text-xs font-medium"
                             >
                               <div className="w-5 h-5 rounded bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
                                 <FileText className="w-3.5 h-3.5" />
                               </div>
                               <span className="truncate">{note.title || 'Untitled Note'}</span>
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Announcements Results */}
+                    {results.announcements.length > 0 && (
+                      <div className="py-2">
+                        <span className="text-[10px] font-bold text-amber-550 uppercase tracking-widest px-3 mb-1 block select-none">
+                          Announcements
+                        </span>
+                        <div className="space-y-0.5">
+                          {results.announcements.map((ann) => (
+                            <Link
+                              key={ann.id}
+                              href={`/circle/${circleId}`}
+                              onClick={() => {
+                                  setSearchOpen(false);
+                                  setQuery('');
+                                }}
+                              className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-amber-50/40 transition-colors text-slate-700 text-xs font-medium"
+                            >
+                              <div className="w-5 h-5 rounded bg-amber-50 flex items-center justify-center text-amber-600 shrink-0">
+                                <Megaphone className="w-3.5 h-3.5" />
+                              </div>
+                              <span className="truncate">{ann.title || 'Announcement'}</span>
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Assignments Results */}
+                    {results.assignments.length > 0 && (
+                      <div className="py-2">
+                        <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest px-3 mb-1 block select-none">
+                          Assignments
+                        </span>
+                        <div className="space-y-0.5">
+                          {results.assignments.map((assign) => (
+                            <Link
+                              key={assign.id}
+                              href={`/circle/${circleId}/assignments`}
+                              onClick={() => {
+                                  setSearchOpen(false);
+                                  setQuery('');
+                                }}
+                              className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-emerald-50/40 transition-colors text-slate-700 text-xs font-medium"
+                            >
+                              <div className="w-5 h-5 rounded bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
+                                <BookOpen className="w-3.5 h-3.5" />
+                              </div>
+                              <span className="truncate">{assign.title}</span>
                             </Link>
                           ))}
                         </div>

@@ -27,13 +27,15 @@ import {
   X,
   RefreshCw,
   FileText,
-  Clock
+  Clock,
+  MessageSquare
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useParams } from 'next/navigation';
 import { useNoteVersions, NoteVersion } from '@/lib/hooks/useNoteVersions';
+import { NoteCommentsDrawer } from './NoteCommentsDrawer';
 
 interface NoteEditorProps {
   initialTitle: string;
@@ -55,8 +57,8 @@ export function NoteEditor({
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'dirty' | 'error'>('saved');
   const [lastSavedTime, setLastSavedTime] = useState<Date | null>(null);
 
-  // Unified Sidebar Tab State: 'ai' | 'history' | null
-  const [activeSidebarTab, setActiveSidebarTab] = useState<'ai' | 'history' | null>(null);
+  // Unified Sidebar Tab State: 'ai' | 'history' | 'comments' | null
+  const [activeSidebarTab, setActiveSidebarTab] = useState<'ai' | 'history' | 'comments' | null>(null);
 
   // AI Summary Drawer State
   const [aiSummary, setAiSummary] = useState<string>('');
@@ -292,12 +294,29 @@ export function NoteEditor({
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Comments Toggle */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setActiveSidebarTab(prev => prev === 'comments' ? null : 'comments')}
+              className={cn(
+                "border-slate-200 gap-1.5 h-8 text-xs rounded-lg font-semibold hover:bg-slate-50",
+                activeSidebarTab === 'comments' ? "bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100" : "text-slate-600"
+              )}
+            >
+              <MessageSquare className="w-3.5 h-3.5" />
+              <span>Comments</span>
+            </Button>
+
             {/* Version History Toggle */}
             <Button
               variant="outline"
               size="sm"
               onClick={() => setActiveSidebarTab(prev => prev === 'history' ? null : 'history')}
-              className="border-slate-200 gap-1.5 h-8 text-xs rounded-lg font-semibold text-slate-600 hover:bg-slate-50"
+              className={cn(
+                "border-slate-200 gap-1.5 h-8 text-xs rounded-lg font-semibold hover:bg-slate-50",
+                activeSidebarTab === 'history' ? "bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100" : "text-slate-600"
+              )}
             >
               <Clock className="w-3.5 h-3.5 text-slate-400" />
               <span>History</span>
@@ -576,6 +595,10 @@ export function NoteEditor({
             )}
           </div>
         </div>
+      )}
+
+      {activeSidebarTab === 'comments' && (
+        <NoteCommentsDrawer noteId={noteId} onClose={() => setActiveSidebarTab(null)} />
       )}
 
     </div>

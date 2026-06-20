@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Circle as CircleIcon, LogOut, Settings, Plus, Users, LayoutGrid, Sparkles } from 'lucide-react';
+import { Circle as CircleIcon, LogOut, Settings, Plus, Users, LayoutGrid, Sparkles, Calendar } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { UserAvatar } from '@/components/shared/UserAvatar';
 import { getCircleColor } from '@/lib/utils/getCircleColor';
@@ -51,12 +51,12 @@ export function Sidebar({ circles, profile, email, onClose }: SidebarProps) {
       </div>
 
       {/* Main Navigation Links */}
-      <div className="px-3 mb-4">
+      <div className="px-3 mb-4 space-y-1">
         <Link
           href="/"
           onClick={onClose}
           className={cn(
-            'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200',
+            'flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-semibold transition-all duration-200',
             pathname === '/'
               ? 'bg-gradient-to-r from-indigo-50/90 to-purple-50/50 text-indigo-700 shadow-sm shadow-indigo-100/30 scale-[1.01]'
               : 'text-slate-600 hover:bg-slate-50/80 hover:text-slate-900 hover:translate-x-0.5'
@@ -64,6 +64,19 @@ export function Sidebar({ circles, profile, email, onClose }: SidebarProps) {
         >
           <LayoutGrid className="w-4 h-4 shrink-0" />
           <span>Dashboard</span>
+        </Link>
+        <Link
+          href="/deadlines"
+          onClick={onClose}
+          className={cn(
+            'flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-semibold transition-all duration-200',
+            pathname === '/deadlines'
+              ? 'bg-gradient-to-r from-indigo-50/90 to-purple-50/50 text-indigo-700 shadow-sm shadow-indigo-100/30 scale-[1.01]'
+              : 'text-slate-600 hover:bg-slate-50/80 hover:text-slate-900 hover:translate-x-0.5'
+          )}
+        >
+          <Calendar className="w-4 h-4 shrink-0" />
+          <span>Deadlines</span>
         </Link>
       </div>
 
