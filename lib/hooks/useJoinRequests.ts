@@ -78,36 +78,25 @@ export function useJoinRequests(circleId: string) {
 
   async function approveRequest(requestId: string, requestUserId: string) {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
       // Optimistic update
       setRequests(prev =>
         prev.map(r => (r.id === requestId ? { ...r, status: 'approved' } : r))
       );
 
-      // 1. Update join_request status
-      const { error: requestError } = await supabase
-        .from('join_requests')
-        .update({
-          status: 'approved',
-          reviewed_at: new Date().toISOString(),
-          reviewed_by: user.id
+      const response = await fetch('/api/circle/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          circleId,
+          requestId,
+          requestUserId
         })
-        .eq('id', requestId);
+      });
 
-      if (requestError) throw requestError;
-
-      // 2. Insert into circle_members
-      const { error: memberError } = await supabase
-        .from('circle_members')
-        .insert({
-          circle_id: circleId,
-          user_id: requestUserId,
-          role: 'member'
-        });
-
-      if (memberError) throw memberError;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to approve join request');
+      }
 
       const approvedReq = requests.find(r => r.id === requestId);
       toast.success(`Approved! ${approvedReq?.profile?.full_name || 'User'} is now a member`);
