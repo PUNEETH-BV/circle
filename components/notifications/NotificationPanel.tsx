@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, CheckCheck, BellOff, Loader2, Settings } from 'lucide-react';
+import { X, CheckCheck, BellOff, Loader2, Settings, BellRing } from 'lucide-react';
 import { NotificationItem } from './NotificationItem';
 import type { AppNotification } from '@/types';
 import { isToday, isYesterday } from 'date-fns';
@@ -15,6 +15,9 @@ interface NotificationPanelProps {
   onMarkAsRead: (id: string) => void;
   onMarkAllAsRead: () => void;
   onOpenSettings?: () => void;
+  nativePermission?: NotificationPermission;
+  isPushSupported?: boolean;
+  onRequestNativePermission?: () => void;
 }
 
 export function NotificationPanel({
@@ -26,10 +29,15 @@ export function NotificationPanel({
   onMarkAsRead,
   onMarkAllAsRead,
   onOpenSettings,
+  nativePermission = 'default',
+  isPushSupported = false,
+  onRequestNativePermission,
 }: NotificationPanelProps) {
   const [activeTab, setActiveTab] = useState<'all' | 'unread'>('all');
 
   if (!open) return null;
+
+  const showPermissionBanner = isPushSupported && nativePermission === 'default' && onRequestNativePermission;
 
   const filteredNotifications = notifications.filter(n => 
     activeTab === 'all' ? true : !n.is_read
@@ -154,6 +162,35 @@ export function NotificationPanel({
             )}
           </button>
         </div>
+
+        {/* Native Notification Permission Banner */}
+        {showPermissionBanner && (
+          <div className="mx-4 mt-4 p-4 bg-gradient-to-br from-indigo-500 via-indigo-600 to-purple-700 rounded-xl text-white shadow-md flex flex-col gap-3 relative overflow-hidden shrink-0 animate-fadeIn border border-indigo-400/20">
+            <div className="absolute -top-6 -right-6 w-24 h-24 bg-white/10 rounded-full blur-xl pointer-events-none" />
+            <div className="absolute -bottom-10 -left-10 w-24 h-24 bg-purple-500/20 rounded-full blur-xl pointer-events-none" />
+            
+            <div className="flex gap-3 items-start relative z-10">
+              <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center shrink-0 shadow-inner">
+                <BellRing className="w-4.5 h-4.5 text-white animate-bounce" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-xs font-bold tracking-wide">Enable Browser Notifications</h4>
+                <p className="text-[10px] text-indigo-100 leading-normal font-medium">
+                  Get real-time updates for announcements, uploads, and member requests directly on your device home screen even in background.
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex justify-end gap-2 mt-1 relative z-10">
+              <button
+                onClick={onRequestNativePermission}
+                className="px-3.5 py-1.5 bg-white text-indigo-600 hover:bg-slate-50 active:scale-95 text-[10px] font-bold rounded-lg transition-all shadow-md cursor-pointer hover:shadow-lg"
+              >
+                Enable Notifications
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Content list */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">

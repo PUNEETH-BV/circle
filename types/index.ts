@@ -75,6 +75,7 @@ export interface Announcement {
   title: string;
   body: string;
   media?: { url: string; type: 'image' | 'video' }[];
+  reactions?: Record<string, string[]>;
   created_at: string;
   author?: Profile;
 }

@@ -11,22 +11,49 @@ export function useCircle(circleId: string) {
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<'admin' | 'member'>('member');
   const [canUpload, setCanUpload] = useState<boolean>(true);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  
+  // Recent activity logs state
+  const [activities, setActivities] = useState<any[]>([]);
+  const [loadingActivities, setLoadingActivities] = useState(true);
 
   useEffect(() => {
+    async function initUser() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setCurrentUserId(user.id);
+      }
+    }
+    initUser();
+    
     fetchCircle();
     fetchAnnouncements();
     checkRole();
+    fetchRecentActivity();
 
-    // Realtime subscription for announcements
+    // Realtime subscription for announcements changes (Insert and Update)
     const channel = supabase
-      .channel(`circle-announcements-${circleId}`)
+      .channel(`circle-announcements-realtime-${circleId}`)
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
         table: 'announcements',
         filter: `circle_id=eq.${circleId}`,
+      }, () => {
+        // Re-fetch to get author profile joined properly
+        fetchAnnouncements();
+        fetchRecentActivity();
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'announcements',
+        filter: `circle_id=eq.${circleId}`,
       }, (payload) => {
-        setAnnouncements(prev => [payload.new as Announcement, ...prev]);
+        const updated = payload.new as Announcement;
+        setAnnouncements(prev => 
+          prev.map(a => a.id === updated.id ? { ...a, reactions: updated.reactions } : a)
+        );
       })
       .subscribe();
 
@@ -69,6 +96,50 @@ export function useCircle(circleId: string) {
     }
   }
 
+  async function fetchRecentActivity() {
+    try {
+      const [filesRes, notesRes] = await Promise.all([
+        supabase
+          .from('files')
+          .select('id, name, created_at, file_type')
+          .eq('circle_id', circleId)
+          .order('created_at', { ascending: false })
+          .limit(4),
+        supabase
+          .from('notes')
+          .select('id, title, updated_at')
+          .eq('circle_id', circleId)
+          .order('updated_at', { ascending: false })
+          .limit(4)
+      ]);
+
+      const combined = [
+        ...(filesRes.data || []).map(f => ({
+          id: f.id,
+          type: 'file',
+          title: f.name,
+          time: new Date(f.created_at),
+          meta: f.file_type
+        })),
+        ...(notesRes.data || []).map(n => ({
+          id: n.id,
+          type: 'note',
+          title: n.title || 'Untitled Note',
+          time: new Date(n.updated_at),
+          meta: null
+        }))
+      ];
+
+      // Sort by time descending
+      combined.sort((a, b) => b.time.getTime() - a.time.getTime());
+      setActivities(combined.slice(0, 5));
+    } catch (err) {
+      console.error('Failed to fetch circle activities:', err);
+    } finally {
+      setLoadingActivities(false);
+    }
+  }
+
   async function createAnnouncement(title: string, body: string, media?: { url: string; type: 'image' | 'video' }[]) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -84,5 +155,64 @@ export function useCircle(circleId: string) {
     if (error) throw error;
   }
 
-  return { circle, announcements, loading, userRole, canUpload, createAnnouncement, refreshCircle: fetchCircle };
+  // Toggle emoji reactions on announcements
+  async function toggleReaction(announcementId: string, emoji: string) {
+    if (!currentUserId) return;
+
+    // Find the announcement in current state
+    const announcement = announcements.find(a => a.id === announcementId);
+    if (!announcement) return;
+
+    const currentReactions = { ...(announcement.reactions || {}) };
+    const usersList = currentReactions[emoji] ? [...currentReactions[emoji]] : [];
+    
+    let updatedUsersList: string[];
+    if (usersList.includes(currentUserId)) {
+      // User already reacted with this emoji: remove them
+      updatedUsersList = usersList.filter(uid => uid !== currentUserId);
+    } else {
+      // User has not reacted: add them
+      updatedUsersList = [...usersList, currentUserId];
+    }
+
+    if (updatedUsersList.length > 0) {
+      currentReactions[emoji] = updatedUsersList;
+    } else {
+      delete currentReactions[emoji];
+    }
+
+    // Optimistic Update
+    setAnnouncements(prev => 
+      prev.map(a => a.id === announcementId ? { ...a, reactions: currentReactions } : a)
+    );
+
+    // Save to Database
+    try {
+      const { error } = await supabase
+        .from('announcements')
+        .update({ reactions: currentReactions })
+        .eq('id', announcementId);
+
+      if (error) throw error;
+    } catch (err) {
+      console.error('Failed to toggle reaction in database:', err);
+      // Re-fetch in case of failure to sync correctly
+      fetchAnnouncements();
+    }
+  }
+
+  return { 
+    circle, 
+    announcements, 
+    loading, 
+    userRole, 
+    canUpload, 
+    activities,
+    loadingActivities,
+    currentUserId,
+    createAnnouncement, 
+    toggleReaction,
+    refreshCircle: fetchCircle,
+    refreshActivity: fetchRecentActivity
+  };
 }
