@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useCircle } from '@/lib/hooks/useCircle';
 import { useEvents, CircleEvent } from '@/lib/hooks/useEvents';
-import { CircleTabNav } from '@/components/circle/CircleTabNav';
+
 import { UserAvatar } from '@/components/shared/UserAvatar';
 import { 
   Calendar, 
@@ -92,10 +92,8 @@ export default function EventsPage() {
 
   return (
     <div className="space-y-6 animate-fadeIn">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <CircleTabNav circleId={circleId} circleName={circle.name} isAdmin={isAdmin} />
-        
-        {isAdmin && (
+      {isAdmin && (
+        <div className="flex justify-end">
           <Button
             onClick={() => setShowEventForm(!showEventForm)}
             className="bg-indigo-600 hover:bg-indigo-700 text-xs font-bold gap-1 rounded-xl self-start h-9 shadow-md shadow-indigo-600/10 animate-pulse"
@@ -103,8 +101,8 @@ export default function EventsPage() {
             <Plus className="w-4 h-4" />
             Schedule Event
           </Button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Event scheduler form */}
       {showEventForm && isAdmin && (

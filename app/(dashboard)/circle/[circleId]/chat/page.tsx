@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { useCircle } from '@/lib/hooks/useCircle';
 import { useChat } from '@/lib/hooks/useChat';
-import { CircleTabNav } from '@/components/circle/CircleTabNav';
+
 import { UserAvatar } from '@/components/shared/UserAvatar';
 import { Send, Loader2, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -16,7 +16,7 @@ export default function ChatPage() {
   const params = useParams();
   const circleId = params.circleId as string;
 
-  const { circle, loading: loadingCircle, userRole, currentUserId } = useCircle(circleId);
+  const { circle, loading: loadingCircle, currentUserId } = useCircle(circleId);
   const { messages, loading: loadingChat, sendMessage } = useChat(circleId);
   const [typedMessage, setTypedMessage] = useState('');
   const [sending, setSending] = useState(false);
@@ -52,13 +52,8 @@ export default function ChatPage() {
     );
   }
 
-  const isAdmin = userRole === 'admin';
-
   return (
-    <div className="space-y-6 h-[calc(100vh-120px)] flex flex-col">
-      <div className="shrink-0">
-        <CircleTabNav circleId={circleId} circleName={circle.name} isAdmin={isAdmin} />
-      </div>
+    <div className="space-y-6 h-[calc(100vh-200px)] flex flex-col">
 
       {/* Chat Container */}
       <div className="flex-1 bg-white rounded-2xl border border-slate-100 shadow-sm flex flex-col overflow-hidden min-h-0">

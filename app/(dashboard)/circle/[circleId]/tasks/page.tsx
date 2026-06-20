@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { useCircle } from '@/lib/hooks/useCircle';
 import { useTasks, TaskItem } from '@/lib/hooks/useTasks';
-import { CircleTabNav } from '@/components/circle/CircleTabNav';
+
 import { UserAvatar } from '@/components/shared/UserAvatar';
 import { createClient } from '@/lib/supabase/client';
 import { 
@@ -205,9 +205,7 @@ export default function TasksPage() {
 
   return (
     <div className="space-y-6 flex flex-col min-h-screen">
-      <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <CircleTabNav circleId={circleId} circleName={circle.name} isAdmin={isAdmin} />
-        
+      <div className="shrink-0 flex flex-col sm:flex-row sm:items-end justify-end gap-4">
         <Button 
           onClick={() => setShowTaskForm(!showTaskForm)}
           className="bg-indigo-600 hover:bg-indigo-700 text-xs font-bold gap-1 rounded-xl self-start h-9 shadow-md shadow-indigo-600/10"
