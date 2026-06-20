@@ -209,7 +209,21 @@ export default function RequestsPage() {
                 )}
 
                 {req.status !== 'pending' && (
-                  <div className="self-end md:self-center">
+                  <div className="flex items-center gap-2 self-end md:self-center">
+                    {req.status === 'rejected' && (
+                      <Button
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white h-8 text-[10px] px-2.5 font-bold shadow-sm"
+                        onClick={() => handleApprove(req.id, req.user_id)}
+                        disabled={isProcessing}
+                      >
+                        {isProcessing ? (
+                          <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                        ) : (
+                          <Check className="w-3 h-3 mr-1" />
+                        )}
+                        <span>Re-Approve</span>
+                      </Button>
+                    )}
                     <Badge
                       className={cn(
                         'px-2.5 py-1 text-[10px] font-semibold tracking-wider uppercase pointer-events-none border',

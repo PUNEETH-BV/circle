@@ -24,6 +24,9 @@ export interface CircleMember {
   user_id: string;
   role: 'admin' | 'member';
   can_upload: boolean;
+  is_blocked?: boolean;
+  blocked_until?: string | null;
+  block_reason?: string | null;
   joined_at: string;
   profile?: Profile;
 }

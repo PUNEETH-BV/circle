@@ -141,6 +141,59 @@ export function useMembers(circleId: string) {
     }
   }
 
+  async function blockMember(
+    memberId: string, 
+    duration: 'permanent' | '1h' | '1d' | '1w', 
+    reason: string
+  ) {
+    try {
+      let blockedUntil: string | null = null;
+      if (duration === '1h') {
+        blockedUntil = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+      } else if (duration === '1d') {
+        blockedUntil = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      } else if (duration === '1w') {
+        blockedUntil = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+      }
+
+      const { error } = await supabase
+        .from('circle_members')
+        .update({
+          is_blocked: true,
+          blocked_until: blockedUntil,
+          block_reason: reason.trim() || null
+        })
+        .eq('id', memberId);
+
+      if (error) throw error;
+
+      toast.success('Member suspended successfully');
+      fetchMembers();
+    } catch (err: any) {
+      toast.error('Failed to suspend member: ' + err.message);
+    }
+  }
+
+  async function unblockMember(memberId: string) {
+    try {
+      const { error } = await supabase
+        .from('circle_members')
+        .update({
+          is_blocked: false,
+          blocked_until: null,
+          block_reason: null
+        })
+        .eq('id', memberId);
+
+      if (error) throw error;
+
+      toast.success('Suspension removed successfully');
+      fetchMembers();
+    } catch (err: any) {
+      toast.error('Failed to remove suspension: ' + err.message);
+    }
+  }
+
   return {
     members,
     loading,
@@ -149,6 +202,8 @@ export function useMembers(circleId: string) {
     updateUploadPermission,
     updateAllUploadPermissions,
     leaveCircle,
+    blockMember,
+    unblockMember,
     refreshMembers: fetchMembers,
   };
 }

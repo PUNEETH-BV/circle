@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { Search, UserMinus, ShieldAlert, ShieldCheck, Link2, Copy, LogOut, Loader2 } from 'lucide-react';
+import { Search, UserMinus, ShieldAlert, ShieldCheck, Link2, Copy, LogOut, Loader2, Lock, Unlock, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,7 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { useMembers } from '@/lib/hooks/useMembers';
 import { useCircle } from '@/lib/hooks/useCircle';
 import { createClient } from '@/lib/supabase/client';
+import type { CircleMember } from '@/types';
 import { formatDate } from '@/lib/utils/formatDate';
 import { toast } from 'sonner';
 import { QRCodeSVG } from 'qrcode.react';
@@ -28,6 +29,8 @@ export default function MembersPage() {
     updateUploadPermission,
     updateAllUploadPermissions,
     leaveCircle,
+    blockMember,
+    unblockMember,
   } = useMembers(circleId);
 
   const { circle, userRole } = useCircle(circleId);
@@ -36,6 +39,7 @@ export default function MembersPage() {
   const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState('');
   const [memberToRemove, setMemberToRemove] = useState<string | null>(null);
+  const [memberToSuspend, setMemberToSuspend] = useState<CircleMember | null>(null);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [inviteLink, setInviteLink] = useState('');
 
@@ -154,6 +158,10 @@ export default function MembersPage() {
             <div className="divide-y divide-slate-50">
               {filteredMembers.map((member) => {
                 const isSelf = member.user_id === currentUserId;
+                const isBlocked = !!member.is_blocked && (
+                  !member.blocked_until || 
+                  new Date(member.blocked_until as string) > new Date()
+                );
                 return (
                   <div key={member.id} className="flex items-center justify-between py-4 first:pt-0 last:pb-0">
                     <div className="flex items-center gap-3 min-w-0">
@@ -162,7 +170,7 @@ export default function MembersPage() {
                         avatarUrl={member.profile?.avatar_url}
                       />
                       <div className="min-w-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-semibold text-slate-900 truncate">
                             {member.profile?.full_name}
                           </span>
@@ -171,10 +179,25 @@ export default function MembersPage() {
                               You
                             </Badge>
                           )}
+                          {isBlocked && (
+                            <Badge className="bg-red-50 text-red-650 hover:bg-red-50 border border-red-100 px-1.5 py-0 text-[10px] gap-1 select-none font-semibold">
+                              <Lock className="w-2.5 h-2.5" />
+                              <span>Suspended</span>
+                            </Badge>
+                          )}
                         </div>
                         <p className="text-xs text-slate-500 mt-0.5">
                           Joined {formatDate(member.joined_at)}
                         </p>
+                        {isBlocked && (
+                          <p className="text-[10px] text-red-500 mt-0.5 flex items-center gap-1 font-semibold">
+                            <span>•</span>
+                            <span className="truncate">
+                              Suspended {member.blocked_until ? `until ${new Date(member.blocked_until as string).toLocaleString()}` : 'permanently'}
+                              {member.block_reason ? ` - "${member.block_reason}"` : ''}
+                            </span>
+                          </p>
+                        )}
                       </div>
                     </div>
 
@@ -215,6 +238,31 @@ export default function MembersPage() {
                           ) : null}
                           {member.role}
                         </Badge>
+                      )}
+
+                      {/* Block / Unblock Button (admin only, not for self) */}
+                      {isAdmin && !isSelf && (
+                        isBlocked ? (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="w-8 h-8 text-green-600 hover:text-green-700 hover:bg-green-50"
+                            onClick={() => unblockMember(member.id)}
+                            title="Restore access / Unsuspend"
+                          >
+                            <Unlock className="w-4 h-4" />
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="w-8 h-8 text-slate-400 hover:text-amber-600 hover:bg-amber-50"
+                            onClick={() => setMemberToSuspend(member)}
+                            title="Suspend Member"
+                          >
+                            <Lock className="w-4 h-4" />
+                          </Button>
+                        )
                       )}
 
                       {/* Remove Button */}
@@ -333,6 +381,131 @@ export default function MembersPage() {
         variant="danger"
       />
 
+      {/* Suspend Member Modal */}
+      <SuspendModal
+        open={memberToSuspend !== null}
+        onClose={() => setMemberToSuspend(null)}
+        onConfirm={async (duration, reason) => {
+          if (memberToSuspend) {
+            await blockMember(memberToSuspend.id, duration, reason);
+          }
+        }}
+        memberName={memberToSuspend?.profile?.full_name || 'this member'}
+      />
+
+    </div>
+  );
+}
+
+interface SuspendModalProps {
+  open: boolean;
+  onClose: () => void;
+  onConfirm: (duration: 'permanent' | '1h' | '1d' | '1w', reason: string) => Promise<void>;
+  memberName: string;
+}
+
+function SuspendModal({ open, onClose, onConfirm, memberName }: SuspendModalProps) {
+  const [duration, setDuration] = useState<'permanent' | '1h' | '1d' | '1w'>('permanent');
+  const [reason, setReason] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  if (!open) return null;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      await onConfirm(duration, reason);
+      onClose();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSubmitting(false);
+      setReason('');
+      setDuration('permanent');
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white rounded-xl border border-slate-100 shadow-xl p-6 max-w-md w-full mx-4 z-10 animate-in fade-in zoom-in duration-200">
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        <div className="flex gap-4">
+          <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center flex-shrink-0 text-amber-500 shadow-sm">
+            <Lock className="w-5 h-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="text-base font-bold text-slate-900">Suspend Member</h3>
+            <p className="text-slate-500 text-xs mt-1">
+              Temporarily or permanently restrict <strong className="text-slate-700">{memberName}</strong>'s access to this circle.
+            </p>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+              Suspension Duration
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {(
+                [
+                  { value: 'permanent', label: 'Permanent' },
+                  { value: '1h', label: '1 Hour' },
+                  { value: '1d', label: '1 Day' },
+                  { value: '1w', label: '1 Week' },
+                ] as const
+              ).map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setDuration(opt.value)}
+                  className={`py-2 px-3 text-xs font-semibold rounded-lg border text-center transition-all ${
+                    duration === opt.value
+                      ? 'border-indigo-650 bg-indigo-50/50 text-indigo-650 shadow-sm'
+                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label htmlFor="suspend-reason" className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+              Reason (Optional)
+            </label>
+            <textarea
+              id="suspend-reason"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="e.g. Inappropriate behavior in chat, temporary project hold..."
+              className="w-full text-xs p-3 rounded-lg border border-slate-200 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-500 placeholder-slate-400 min-h-[70px] resize-none"
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-2">
+            <Button type="button" variant="outline" onClick={onClose} disabled={submitting} className="h-9 text-xs">
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={submitting}
+              className="bg-amber-650 hover:bg-amber-700 text-white h-9 text-xs font-semibold shadow-sm"
+            >
+              {submitting ? 'Suspending...' : 'Suspend Member'}
+            </Button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
