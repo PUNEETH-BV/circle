@@ -18,22 +18,31 @@ export default function NoteDetailPage() {
 
   const { updateNote } = useNotes(circleId);
   const [note, setNote] = useState<Note | null>(null);
+  const [currentUserProfile, setCurrentUserProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function loadNote() {
+    async function loadNoteAndProfile() {
       try {
-        const { data, error } = await supabase
-          .from('notes')
-          .select('*')
-          .eq('id', noteId)
-          .single();
+        const [noteRes, userRes] = await Promise.all([
+          supabase.from('notes').select('*').eq('id', noteId).single(),
+          supabase.auth.getUser()
+        ]);
 
-        if (error) throw error;
-        if (!data) throw new Error('Note not found');
+        if (noteRes.error) throw noteRes.error;
+        if (!noteRes.data) throw new Error('Note not found');
 
-        setNote(data as Note);
+        setNote(noteRes.data as Note);
+
+        if (userRes.data?.user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', userRes.data.user.id)
+            .single();
+          setCurrentUserProfile(profile);
+        }
       } catch (err: any) {
         setError(err.message || 'Failed to load note');
       } finally {
@@ -41,7 +50,7 @@ export default function NoteDetailPage() {
       }
     }
 
-    loadNote();
+    loadNoteAndProfile();
   }, [noteId]);
 
   const handleSave = async (title: string, content: any) => {
@@ -79,6 +88,7 @@ export default function NoteDetailPage() {
         initialContent={note.content}
         onSave={handleSave}
         onBack={handleBack}
+        currentUserProfile={currentUserProfile}
       />
     </div>
   );

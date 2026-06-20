@@ -1,13 +1,30 @@
 'use client';
 
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Circle as CircleIcon, LogOut, Settings, Plus, Users, LayoutGrid, Sparkles, Calendar } from 'lucide-react';
+import { 
+  Circle as CircleIcon, 
+  LogOut, 
+  Settings, 
+  Plus, 
+  Users, 
+  LayoutGrid, 
+  Sparkles, 
+  Calendar,
+  Camera,
+  User,
+  Mail,
+  X,
+  Loader2
+} from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { UserAvatar } from '@/components/shared/UserAvatar';
+import { Button } from '@/components/ui/button';
 import { getCircleColor } from '@/lib/utils/getCircleColor';
 import { getInitials } from '@/lib/utils/getInitials';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 import type { Circle, Profile } from '@/types';
 
 interface SidebarProps {
@@ -22,10 +39,122 @@ export function Sidebar({ circles, profile, email, onClose }: SidebarProps) {
   const router = useRouter();
   const supabase = createClient();
 
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState('');
+  const [updating, setUpdating] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Sync state with profile prop updates
+  useEffect(() => {
+    if (profile) {
+      setName(profile.full_name || '');
+      setAvatarUrl(profile.avatar_url || '');
+    }
+    if (email) {
+      setNewEmail(email);
+    }
+  }, [profile, email]);
+
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     router.push('/auth/login');
     router.refresh();
+  };
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) {
+      toast.error('Name is required');
+      return;
+    }
+
+    setUpdating(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      // Update public.profiles
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          full_name: name.trim(),
+          avatar_url: avatarUrl || null
+        })
+        .eq('id', user.id);
+
+      if (profileError) throw profileError;
+
+      // Update email if changed
+      if (newEmail.trim() && newEmail.trim().toLowerCase() !== email?.toLowerCase()) {
+        const { error: emailError } = await supabase.auth.updateUser({
+          email: newEmail.trim()
+        });
+        if (emailError) throw emailError;
+        toast.success('Profile name updated! A confirmation email has been sent to confirm your new email address.');
+      } else {
+        toast.success('Profile updated successfully!');
+      }
+
+      setProfileModalOpen(false);
+      router.refresh();
+    } catch (err: any) {
+      toast.error('Failed to update profile: ' + err.message);
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Avatar exceeds 5MB size limit');
+        return;
+      }
+
+      setUploadingAvatar(true);
+      try {
+        // 1. Get signed URL
+        const response = await fetch('/api/profile/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fileName: file.name,
+            fileType: file.type || 'image/jpeg'
+          })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to get upload URL');
+        }
+
+        const { signedUrl, filePath } = await response.json();
+
+        // 2. PUT upload file
+        await fetch(signedUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': file.type || 'image/jpeg' },
+          body: file
+        });
+
+        // 3. Get public URL
+        const publicUrl = supabase.storage
+          .from('circle-files')
+          .getPublicUrl(filePath).data.publicUrl;
+
+        setAvatarUrl(publicUrl);
+        toast.success('Avatar uploaded!');
+      } catch (err: any) {
+        toast.error('Avatar upload failed: ' + err.message);
+      } finally {
+        setUploadingAvatar(false);
+      }
+    }
   };
 
   return (
@@ -147,19 +276,25 @@ export function Sidebar({ circles, profile, email, onClose }: SidebarProps) {
       {/* Premium User Account Section */}
       <div className="p-4 border-t border-slate-100/80 bg-white/30 backdrop-blur-md">
         <div className="flex items-center gap-3 p-1.5 rounded-xl hover:bg-slate-50/80 transition-colors">
-          <UserAvatar
-            name={profile?.full_name || email || 'User'}
-            avatarUrl={profile?.avatar_url}
-            size="sm"
-            className="border border-slate-100 shadow-sm"
-          />
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold text-slate-900 truncate">
-              {profile?.full_name || 'User'}
-            </p>
-            <p className="text-[10px] text-slate-400 truncate">
-              {email || 'Collaborator'}
-            </p>
+          <div 
+            onClick={() => setProfileModalOpen(true)}
+            className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer"
+            title="Edit Profile Settings"
+          >
+            <UserAvatar
+              name={profile?.full_name || email || 'User'}
+              avatarUrl={profile?.avatar_url}
+              size="sm"
+              className="border border-slate-100 shadow-sm"
+            />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold text-slate-900 truncate">
+                {profile?.full_name || 'User'}
+              </p>
+              <p className="text-[10px] text-slate-400 truncate">
+                {email || 'Collaborator'}
+              </p>
+            </div>
           </div>
           <button
             onClick={handleSignOut}
@@ -170,6 +305,123 @@ export function Sidebar({ circles, profile, email, onClose }: SidebarProps) {
           </button>
         </div>
       </div>
+
+      {/* User Profile Settings Modal */}
+      {profileModalOpen && (
+        <div className="fixed inset-0 bg-black/55 backdrop-blur-[2px] z-[9999] flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-2xl p-6 max-w-sm w-full space-y-6 relative animate-scaleUp">
+            
+            {/* Header */}
+            <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-1.5">
+                <Settings className="w-4 h-4 text-indigo-650" />
+                <h3 className="text-sm font-bold text-slate-900">Profile Settings</h3>
+              </div>
+              <button 
+                onClick={() => setProfileModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 hover:bg-slate-50 rounded-lg transition-colors"
+              >
+                <X className="w-4.5 h-4.5" />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSaveProfile} className="space-y-4">
+              
+              {/* Profile Pic Upload Section */}
+              <div className="flex flex-col items-center gap-2">
+                <div className="relative group w-20 h-20 rounded-full overflow-hidden border border-slate-100 shadow-md">
+                  <UserAvatar
+                    name={name || 'User'}
+                    avatarUrl={avatarUrl}
+                    size="lg"
+                    className="w-full h-full object-cover"
+                  />
+                  
+                  {/* Upload Overlay */}
+                  <label className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                    {uploadingAvatar ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <>
+                        <Camera className="w-4 h-4" />
+                        <span className="text-[8px] font-bold mt-0.5">Edit DP</span>
+                      </>
+                    )}
+                    <input 
+                      type="file" 
+                      accept="image/*"
+                      ref={fileInputRef}
+                      onChange={handleAvatarUpload}
+                      disabled={uploadingAvatar}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+                <span className="text-[9px] font-semibold text-slate-400">Click avatar to upload new DP</span>
+              </div>
+
+              {/* Name field */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-450 uppercase tracking-wider block">Full Name</label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="text"
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-xs outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 transition-all text-slate-800"
+                    placeholder="Enter your name"
+                  />
+                </div>
+              </div>
+
+              {/* Email field */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-450 uppercase tracking-wider block">Email Address</label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="email"
+                    required
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    className="w-full border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-xs outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 transition-all text-slate-800"
+                    placeholder="name@university.edu"
+                  />
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-2 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setProfileModalOpen(false)}
+                  className="flex-1 text-xs h-9 rounded-xl border-slate-200 font-bold"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={updating || uploadingAvatar}
+                  className="flex-1 text-xs bg-indigo-600 hover:bg-indigo-700 h-9 rounded-xl font-bold shadow-md shadow-indigo-600/10"
+                >
+                  {updating ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-white" />
+                  ) : (
+                    'Save Changes'
+                  )}
+                </Button>
+              </div>
+
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

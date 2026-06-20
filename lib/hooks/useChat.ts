@@ -9,6 +9,12 @@ export interface ChatMessage {
   circle_id: string;
   sender_id: string;
   body: string;
+  attachments?: {
+    url: string;
+    type: string;
+    name: string;
+    size?: number;
+  }[];
   created_at: string;
   sender?: {
     id: string;
@@ -62,8 +68,8 @@ export function useChat(circleId: string) {
     }
   }
 
-  async function sendMessage(body: string) {
-    if (!body.trim()) return;
+  async function sendMessage(body: string, attachments: any[] = []) {
+    if (!body.trim() && attachments.length === 0) return;
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -74,7 +80,8 @@ export function useChat(circleId: string) {
         .insert({
           circle_id: circleId,
           sender_id: user.id,
-          body: body.trim()
+          body: body.trim(),
+          attachments
         });
 
       if (error) throw error;

@@ -152,21 +152,37 @@ export default function SettingsPage() {
 
       setUploadingAvatar(true);
       try {
-        const filePath = `${circleId}/avatars/${Date.now()}-${file.name}`;
-        
-        // Upload file to circle-files bucket
-        const { error: uploadError } = await supabase.storage
-          .from('circle-files')
-          .upload(filePath, file);
+        // 1. Get signed URL
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            circleId,
+            fileName: file.name,
+            fileType: file.type || 'image/jpeg',
+          }),
+        });
 
-        if (uploadError) throw uploadError;
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to get upload URL');
+        }
 
-        // Get public URL
+        const { signedUrl, filePath } = await response.json();
+
+        // 2. PUT file upload
+        await fetch(signedUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': file.type || 'image/jpeg' },
+          body: file,
+        });
+
+        // 3. Get public URL
         const { data: { publicUrl } } = supabase.storage
           .from('circle-files')
           .getPublicUrl(filePath);
 
-        // Update circles table
+        // 4. Update circles table
         const { error: updateError } = await supabase
           .from('circles')
           .update({ avatar_url: publicUrl })
@@ -324,13 +340,16 @@ export default function SettingsPage() {
 
     setDeletingCircle(true);
     try {
-      // Deleting a circle cascades deletes to files, notes, announcements, circle_members in the schema
-      const { error } = await supabase
-        .from('circles')
-        .delete()
-        .eq('id', circleId);
+      const response = await fetch('/api/circle/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ circleId }),
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete circle');
+      }
 
       toast.success(`Deleted workspace "${circle?.name}"`);
       window.location.href = '/';
