@@ -2,23 +2,33 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Download, Smartphone, ShieldCheck, Cpu, Layers, ArrowLeft, Check, Sparkles } from 'lucide-react';
+import { Download, Smartphone, ShieldCheck, Cpu, ArrowLeft, Check, Sparkles, AlertCircle } from 'lucide-react';
+
+// ─── APK Download URL ────────────────────────────────────────────────────────
+// Set NEXT_PUBLIC_APK_URL in your .env.local (or Vercel env vars) to the
+// direct-download link from Google Drive, Dropbox, or GitHub Releases.
+//
+// Google Drive:  Change the share link from /view to /uc?export=download
+//   e.g. https://drive.google.com/uc?export=download&id=YOUR_FILE_ID
+//
+// Dropbox:       Change ?dl=0 to ?dl=1 at the end of the share link.
+// ─────────────────────────────────────────────────────────────────────────────
+const APK_URL = process.env.NEXT_PUBLIC_APK_URL || '';
 
 export default function DownloadPage() {
   const [downloading, setDownloading] = useState(false);
   const [downloaded, setDownloaded] = useState(false);
 
   const handleDownload = () => {
+    if (!APK_URL) return;
     setDownloading(true);
-    // Trigger download
     const link = document.createElement('a');
-    link.href = '/circle-mobile.apk';
+    link.href = APK_URL;
     link.download = 'circle-mobile.apk';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 
-    // Simulate download finish state
     setTimeout(() => {
       setDownloading(false);
       setDownloaded(true);
@@ -73,34 +83,45 @@ export default function DownloadPage() {
 
           {/* Action Area */}
           <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-6 pt-4">
-            <button
-              onClick={handleDownload}
-              className={`h-16 px-8 rounded-xl font-bold flex items-center justify-center gap-3 transition-all duration-300 shadow-xl shadow-indigo-600/10 active:scale-[0.98] ${
-                downloaded
-                  ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/20'
-                  : 'bg-indigo-600 hover:bg-indigo-500 text-white'
-              }`}
-            >
-              {downloading ? (
-                <>
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  <span>Downloading...</span>
-                </>
-              ) : downloaded ? (
-                <>
-                  <Check className="w-5 h-5" />
-                  <span>Download Complete!</span>
-                </>
-              ) : (
-                <>
-                  <Download className="w-5 h-5" />
-                  <span>Download APK (11.4 MB)</span>
-                </>
-              )}
-            </button>
+            {!APK_URL ? (
+              /* ── Coming Soon state when env var not set ── */
+              <div className="flex items-center gap-3 px-6 py-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 max-w-sm">
+                <AlertCircle className="w-5 h-5 shrink-0" />
+                <span className="text-sm font-medium">APK coming soon — check back shortly!</span>
+              </div>
+            ) : (
+              /* ── Real download button ── */
+              <a
+                href={APK_URL}
+                download="circle-mobile.apk"
+                onClick={() => { setDownloading(true); setTimeout(() => { setDownloading(false); setDownloaded(true); setTimeout(() => setDownloaded(false), 5000); }, 2000); }}
+                className={`h-16 px-8 rounded-xl font-bold flex items-center justify-center gap-3 transition-all duration-300 shadow-xl shadow-indigo-600/10 active:scale-[0.98] no-underline ${
+                  downloaded
+                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/20'
+                    : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                }`}
+              >
+                {downloading ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Downloading...</span>
+                  </>
+                ) : downloaded ? (
+                  <>
+                    <Check className="w-5 h-5" />
+                    <span>Download Complete!</span>
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-5 h-5" />
+                    <span>Download APK (11.4 MB)</span>
+                  </>
+                )}
+              </a>
+            )}
 
             {/* Version Metadata */}
             <div className="text-left text-xs text-slate-500 font-mono space-y-1">
