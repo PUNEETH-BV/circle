@@ -1,8 +1,12 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  // Derive the app origin from the incoming request so this works on
+  // localhost, Vercel preview URLs, and production without any env-var change.
+  const origin = process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin
   const cookieStore = await cookies()
   const cookiesToSet: { name: string; value: string; options?: any }[] = []
 
@@ -25,14 +29,14 @@ export async function GET() {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`,
+      redirectTo: `${origin}/auth/callback`,
       skipBrowserRedirect: true,
     },
   })
 
   if (error || !data.url) {
     return NextResponse.redirect(
-      new URL('/auth/login?error=google_failed', process.env.NEXT_PUBLIC_APP_URL!)
+      new URL('/auth/login?error=google_failed', origin)
     )
   }
 

@@ -7,8 +7,8 @@ export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
   const next = requestUrl.searchParams.get('next') ?? '/'
-
-  // Create the redirect response first so we can attach cookies directly to it
+  // Always redirect back to the same origin the request came from —
+  // works on localhost, Vercel preview, and production automatically.
   const response = NextResponse.redirect(new URL(next, requestUrl.origin))
 
   if (code) {
