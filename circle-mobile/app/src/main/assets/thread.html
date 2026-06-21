@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+    <title>Circle - Discussion Thread</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com" rel="preconnect"/>
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+    <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700;800&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+    <!-- Material Symbols -->
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    
+    <script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-tint": "#4d44e3",
+                    "surface": "#fcf8ff",
+                    "on-tertiary": "#ffffff",
+                    "secondary-fixed": "#dae2fd",
+                    "tertiary-fixed": "#d3e4fe",
+                    "on-primary-container": "#dad7ff",
+                    "tertiary": "#3a495f",
+                    "surface-bright": "#fcf8ff",
+                    "surface-dim": "#dcd8e5",
+                    "surface-container-high": "#eae6f4",
+                    "surface-container": "#f0ecf9",
+                    "inverse-on-surface": "#f3effc",
+                    "on-surface": "#1b1b24",
+                    "border-low": "#E2E8F0",
+                    "primary-container": "#4f46e5",
+                    "on-tertiary-fixed": "#0b1c30",
+                    "on-secondary": "#ffffff",
+                    "inverse-surface": "#302f39",
+                    "tertiary-fixed-dim": "#b7c8e1",
+                    "tertiary-container": "#516177",
+                    "on-primary": "#ffffff",
+                    "inverse-primary": "#c3c0ff",
+                    "primary-fixed-dim": "#c3c0ff",
+                    "outline-variant": "#c7c4d8",
+                    "error-container": "#ffdad6",
+                    "on-error": "#ffffff",
+                    "primary": "#3525cd",
+                    "on-secondary-container": "#5c647a",
+                    "surface-container-highest": "#e4e1ee",
+                    "on-surface-variant": "#464555",
+                    "surface-container-lowest": "#ffffff",
+                    "on-background": "#1b1b24",
+                    "surface-variant": "#e4e1ee",
+                    "background": "#fcf8ff",
+                    "surface-subtle": "#F8FAFC",
+                    "primary-fixed": "#e2dfff",
+                    "on-primary-fixed": "#0f0069",
+                    "ink-muted": "#94A3B8",
+                    "on-tertiary-container": "#ccdcf7",
+                    "secondary-fixed-dim": "#bec6e0",
+                    "secondary-container": "#dae2fd",
+                    "on-tertiary-fixed-variant": "#38485d",
+                    "error": "#ba1a1a",
+                    "on-secondary-fixed": "#131b2e",
+                    "on-error-container": "#93000a",
+                    "on-primary-fixed-variant": "#3323cc",
+                    "secondary": "#565e74",
+                    "surface-container-low": "#f5f2ff",
+                    "on-secondary-fixed-variant": "#3f465c",
+                    "outline": "#777587"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "unit": "4px",
+                    "margin-mobile": "20px",
+                    "container-max": "1280px",
+                    "margin-desktop": "64px",
+                    "gutter": "24px"
+            },
+            "fontFamily": {
+                    "body-md": ["Inter"],
+                    "label-md": ["Inter"],
+                    "headline-lg": ["Hanken Grotesk"],
+                    "headline-xl": ["Hanken Grotesk"],
+                    "headline-lg-mobile": ["Hanken Grotesk"],
+                    "headline-md": ["Hanken Grotesk"],
+                    "body-sm": ["Inter"],
+                    "body-lg": ["Inter"]
+            },
+            "fontSize": {
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "600"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+    <style>
+        .glass-nav {
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            line-height: 1;
+            vertical-align: middle;
+        }
+        body {
+            background-color: #fcf8ff;
+            color: #1b1b24;
+            font-family: 'Inter', sans-serif;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #e4e1ee;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="min-h-screen pb-32">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 backdrop-blur-xl bg-white/70 border-b border-border-low">
+    <div class="flex justify-between items-center px-margin-mobile h-16 w-full max-w-container-max mx-auto">
+        <div class="flex items-center gap-3">
+            <button onclick="window.location.href='dashboard.html'" class="text-on-surface-variant hover:bg-surface-container-low transition-colors p-2 rounded-full active:scale-95 flex items-center justify-center">
+                <span class="material-symbols-outlined text-2xl">arrow_back</span>
+            </button>
+            <h1 class="font-headline-md text-headline-md font-bold text-primary">Thread Discussion</h1>
+        </div>
+        <div class="flex items-center gap-2">
+            <span class="px-3 py-1 bg-primary/10 rounded-full text-[10px] font-bold text-primary uppercase tracking-wider">Design</span>
+        </div>
+    </div>
+</header>
+
+<main class="pt-20 px-margin-mobile max-w-lg mx-auto space-y-6">
+    <!-- Main Thread Topic Card -->
+    <div class="bg-white rounded-xl border border-border-low p-6 shadow-sm space-y-4">
+        <!-- Author Info -->
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full overflow-hidden border border-border-low">
+                    <img class="w-full h-full object-cover" alt="Sarah Profile" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC05Ujk8V71HMArQSlu4ApXY0k7DRw6ats4kSRXlA-f3FFHJ0RmsLGWGJYx8t8YmXDewzUscMYK72Tr-rDPE7vni6akUcJlhU0d7hTsY6aOl2aObIWme7XL8n6VJogLVuEiMVYjPM8Viy8MleW_ua8WaazrhUSjf1BUYdBPRzYY96XV-GsBrnype6oCjFbFZWK7c5utPMXUM_C8mwJSiKCjjgqxpJqQS-hbNxG3RIOrHqe3sptKhJUN8SEj-ZBe8IHNhwv_46LZ3GLz"/>
+                </div>
+                <div>
+                    <h4 class="font-body-md text-body-md font-semibold text-on-surface">Sarah Connor</h4>
+                    <p class="font-label-md text-label-md text-on-surface-variant">Creative Director</p>
+                </div>
+            </div>
+            <span class="font-label-md text-label-md text-ink-muted">12m ago</span>
+        </div>
+        
+        <!-- Post Content -->
+        <div class="space-y-3">
+            <h2 class="font-headline-md text-headline-md text-on-surface leading-snug">Design System 2.0 Color Refactoring</h2>
+            <p class="font-body-md text-body-md text-on-surface-variant">
+                Hey team! I have updated the design tokens to include dark mode coordinates and revised our color spacing curves. Please review the palette transitions for the brand colors, specifically the primary theme values.
+            </p>
+        </div>
+        
+        <!-- Metadata / Actions -->
+        <div class="flex items-center gap-4 pt-2 border-t border-border-low text-ink-muted">
+            <button class="flex items-center gap-1 hover:text-primary transition-colors text-sm">
+                <span class="material-symbols-outlined text-lg">favorite</span>
+                <span>8</span>
+            </button>
+            <button class="flex items-center gap-1 hover:text-primary transition-colors text-sm">
+                <span class="material-symbols-outlined text-lg">chat_bubble</span>
+                <span>3 replies</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Replies Title -->
+    <div class="flex justify-between items-center px-1">
+        <h3 class="font-headline-md text-[18px] font-bold text-on-surface">Replies</h3>
+        <span class="font-label-md text-label-md text-ink-muted">Sorted by Activity</span>
+    </div>
+
+    <!-- Replies List -->
+    <div class="space-y-4" id="replies-list">
+        <!-- Reply 1 -->
+        <div class="flex gap-3 bg-white/40 border border-border-low/60 rounded-xl p-5">
+            <div class="w-8 h-8 rounded-full overflow-hidden border border-border-low shrink-0">
+                <img class="w-full h-full object-cover" alt="Alex Profile" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA4mNGk2nXRvl-khSMlwCDFVzHXKdLSdit9EBWxUK_t4pozI3PlAKN94nZStXvZCHeRAUvsGt8DgNN69jNDB0uhp9JZowKxzpoHNphtxbz6eSBac_7Sj6fDyY9sfL1-FjV4sUSqv9EKQeUv1bqWPPTaLQZvkBRbSwhVRgtiFvT35exNpkgWhQrkh68jIN8zZUcG0vkJLl23Td6YFkdBrOXIIzXRmoAiwtM2qOTwv_j97wxw9IDmtmGht7-Kysusvn65k9oNgCBaSYa2"/>
+            </div>
+            <div class="flex-1 space-y-1">
+                <div class="flex justify-between items-baseline">
+                    <h5 class="font-body-sm font-semibold text-on-surface">Alex Mercer</h5>
+                    <span class="font-label-md text-[10px] text-ink-muted">8m ago</span>
+                </div>
+                <p class="font-body-sm text-body-sm text-on-surface-variant">
+                    Looks fantastic, Sarah! The primary HSL transitions are much cleaner. Should we refine the error colors too?
+                </p>
+            </div>
+        </div>
+
+        <!-- Reply 2 -->
+        <div class="flex gap-3 bg-white/40 border border-border-low/60 rounded-xl p-5">
+            <div class="w-8 h-8 rounded-full overflow-hidden border border-border-low shrink-0">
+                <img class="w-full h-full object-cover" alt="David Profile" src="https://lh3.googleusercontent.com/aida-public/AB6AXuChRMpRk96vO7t0YXOlNe_n_p6rzyuLy6pWFnn3lYgFUfTjrjFe8pCngU3sH_Ku_mbBo3-PR4GbCS-JITS4Utdzdfk2r6xZ072NTaXbrp9yccYuJ61H3mWSZpeE5WTHLKpg4nkgym1SoxgO8hpRyfcs9rgeOdCI7jz-if40qNNcq55MKBellpD_1dG3f-Rlxh9iNUAHTK39nUscjA5LN_2O3BmKqqMV35KtR754w1DsIdtX_a8Ws7Ak68nRsVQCL1s3KA3Qln3nrQSU"/>
+            </div>
+            <div class="flex-1 space-y-1">
+                <div class="flex justify-between items-baseline">
+                    <h5 class="font-body-sm font-semibold text-on-surface">David Miller</h5>
+                    <span class="font-label-md text-[10px] text-ink-muted">5m ago</span>
+                </div>
+                <p class="font-body-sm text-body-sm text-on-surface-variant">
+                    I checked the contrast ratios on mobile displays. Everything meets the AAA rating. Great job on the spacing curves!
+                </p>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- Bottom Reply/Comment Bar -->
+<footer class="fixed bottom-0 left-0 w-full p-4 bg-white/80 glass-nav border-t border-border-low z-50">
+    <div class="max-w-lg mx-auto flex items-center gap-3">
+        <input id="reply-input" class="flex-1 h-12 px-4 rounded-xl bg-surface-subtle border border-border-low focus:border-primary focus:ring-4 focus:ring-primary/5 outline-none transition-all placeholder:text-ink-muted font-body-sm text-body-sm" placeholder="Type a reply..."/>
+        <button id="send-reply-btn" class="w-12 h-12 bg-primary text-white rounded-xl flex items-center justify-center hover:bg-primary-container active:scale-95 transition-all shadow-md shadow-primary/10">
+            <span class="material-symbols-outlined text-[20px]">send</span>
+        </button>
+    </div>
+</footer>
+
+<script>
+    // Handle sending reply
+    document.getElementById('send-reply-btn').addEventListener('click', () => {
+        const input = document.getElementById('reply-input');
+        const text = input.value.trim();
+        if (!text) return;
+
+        // Create new reply item
+        const repliesList = document.getElementById('replies-list');
+        const newReply = document.createElement('div');
+        newReply.className = "flex gap-3 bg-white/70 border border-primary-fixed/50 rounded-xl p-5 animate-in fade-in slide-in-from-bottom-2 duration-300";
+        newReply.innerHTML = `
+            <div class="w-8 h-8 rounded-full overflow-hidden border border-border-low shrink-0 bg-primary-container flex items-center justify-center text-white font-bold text-xs">
+                U
+            </div>
+            <div class="flex-1 space-y-1">
+                <div class="flex justify-between items-baseline">
+                    <h5 class="font-body-sm font-semibold text-on-surface">You</h5>
+                    <span class="font-label-md text-[10px] text-primary font-bold">Just now</span>
+                </div>
+                <p class="font-body-sm text-body-sm text-on-surface-variant">
+                    ${text}
+                </p>
+            </div>
+        `;
+        repliesList.appendChild(newReply);
+        
+        // Clear input and scroll down
+        input.value = "";
+        window.scrollTo({
+            top: document.body.scrollHeight,
+            behavior: 'smooth'
+        });
+    });
+
+    // Handle enter key in input
+    document.getElementById('reply-input').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            document.getElementById('send-reply-btn').click();
+        }
+    });
+</script>
+</body>
+</html>

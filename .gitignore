@@ -27,3 +27,15 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Android / Mobile
+circle-mobile/jdk17/
+circle-mobile/.gradle/
+circle-mobile/build/
+circle-mobile/app/build/
+circle-mobile/local.properties
+*.apk
+*.aab
+
+# Scratch files
+scratch/

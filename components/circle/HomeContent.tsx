@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { Plus, UserPlus, CircleDot, Sparkles, Folder, Users, Bell, ArrowUpRight } from 'lucide-react';
+import { Plus, UserPlus, CircleDot, Sparkles, Folder, Users, Bell, ArrowUpRight, Smartphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CircleCard } from './CircleCard';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -51,6 +51,13 @@ export function HomeContent({ profile, circles }: HomeContentProps) {
           </div>
 
           <div className="flex flex-wrap gap-3 shrink-0">
+            <button 
+              onClick={() => router.push('/download')}
+              className="inline-flex items-center justify-center px-4 py-2 text-xs font-bold text-slate-300 hover:text-white bg-slate-900/60 hover:bg-slate-800 border border-slate-800 rounded-xl transition-all shadow-md active:scale-95 cursor-pointer"
+            >
+              <Smartphone className="w-4.5 h-4.5 mr-2 text-indigo-400" />
+              Get Mobile App
+            </button>
             <button 
               onClick={() => router.push('/join-circle')}
               className="inline-flex items-center justify-center px-4 py-2 text-xs font-bold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl transition-all shadow-md active:scale-95 cursor-pointer"
